@@ -42,11 +42,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [language, setLanguageState] = useState<Language>(() => {
+    const isEnDefaultEnsured = localStorage.getItem('running_tracker_lang_v2_default_en');
+    if (!isEnDefaultEnsured) {
+      localStorage.setItem('running_tracker_lang_v2_default_en', 'true');
+      localStorage.setItem('running_tracker_lang', 'en');
+      // Also update guest settings if present to have 'en'
+      try {
+        const savedGuest = localStorage.getItem('running_tracker_guest_settings');
+        if (savedGuest) {
+          const parsed = JSON.parse(savedGuest);
+          parsed.language_preference = 'en';
+          localStorage.setItem('running_tracker_guest_settings', JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore
+      }
+      return 'en';
+    }
+
     const savedLang = localStorage.getItem('running_tracker_lang') as Language | null;
     if (savedLang === 'en' || savedLang === 'id') {
       return savedLang;
     }
-    return 'en'; // Default is English as requested
+    return 'en'; // Default is strictly English as requested
   });
 
   const setLanguage = (newLang: Language) => {

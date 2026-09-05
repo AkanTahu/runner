@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Flame, 
   Target, 
   Activity, 
   Footprints, 
   CheckCircle2, 
-  FileSpreadsheet
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Clock,
+  Heart,
+  TrendingUp,
+  Sparkles
 } from 'lucide-react';
 import { Plan, Gear } from '../types';
 import { useAuth } from '../lib/authContext';
@@ -17,17 +24,58 @@ interface SummaryPageProps {
 
 export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
   const { t, language } = useAuth();
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  
+  // Current month in YYYY-MM format
+  const today = new Date();
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
 
-  // Compute aggregated stats
-  const completedRuns = plans.filter(p => p.actual_log?.is_run);
-  const totalActualDistance = completedRuns.reduce((sum, p) => sum + (p.actual_log?.actual_distance || 0), 0);
-  const totalPlannedDistance = plans.reduce((sum, p) => sum + (p.type_run !== 'Rest Day' ? p.target_distance : 0), 0);
+  // Collect all available months from plans + ensure current month is present
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>();
+    monthSet.add(currentMonthStr);
+    plans.forEach(p => {
+      if (p.date && p.date.length >= 7) {
+        monthSet.add(p.date.slice(0, 7));
+      }
+    });
+    return Array.from(monthSet).sort().reverse();
+  }, [plans, currentMonthStr]);
 
-  // Pace calculations
+  // Navigate months
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    date.setMonth(date.getMonth() + (direction === 'next' ? 1 : -1));
+    const newMonthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(newMonthStr);
+  };
+
+  // Month display label
+  const monthDisplayLabel = useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const date = new Date(year, month - 1, 1);
+    return date.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+      month: 'long',
+      year: 'numeric'
+    });
+  }, [selectedMonth, language]);
+
+  // Filter plans for selected month
+  const monthlyPlans = useMemo(() => {
+    return plans.filter(p => p.date && p.date.startsWith(selectedMonth));
+  }, [plans, selectedMonth]);
+
+  // Compute monthly stats
+  const monthlyCompletedRuns = monthlyPlans.filter(p => p.actual_log?.is_run);
+  const monthlyActualDistance = monthlyCompletedRuns.reduce((sum, p) => sum + (p.actual_log?.actual_distance || 0), 0);
+  const monthlyPlannedDistance = monthlyPlans.reduce((sum, p) => sum + (p.type_run !== 'Rest Day' ? p.target_distance : 0), 0);
+
+  // Monthly Average Pace
   let paceSecondsSum = 0;
   let paceCount = 0;
-  completedRuns.forEach(p => {
+  monthlyCompletedRuns.forEach(p => {
     if (p.actual_log?.actual_avg_pace && p.actual_log.actual_avg_pace !== '-') {
       const parts = p.actual_log.actual_avg_pace.split(':').map(Number);
       if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
@@ -37,7 +85,7 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     }
   });
 
-  const avgPace = paceCount > 0 
+  const monthlyAvgPace = paceCount > 0 
     ? (() => {
         const sec = Math.round(paceSecondsSum / paceCount);
         const m = Math.floor(sec / 60);
@@ -46,44 +94,99 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
       })()
     : '05:30';
 
-  const plannedRunsCount = plans.filter(p => p.type_run !== 'Rest Day').length;
-  const complianceRate = plannedRunsCount > 0 
-    ? Math.min(100, Math.round((completedRuns.length / plannedRunsCount) * 100))
-    : 100;
+  // Monthly Average Heart Rate
+  const runsWithHR = monthlyCompletedRuns.filter(p => p.actual_log?.avg_heart_rate);
+  const avgHR = runsWithHR.length > 0
+    ? Math.round(runsWithHR.reduce((sum, p) => sum + (p.actual_log?.avg_heart_rate || 0), 0) / runsWithHR.length)
+    : null;
 
-  // Heatmap generation (Last 16 weeks / ~112 days)
-  const today = new Date();
-  const heatmapDaysCount = 112; // 16 weeks
-  const startDate = new Date(today);
-  startDate.setDate(today.getDate() - heatmapDaysCount);
+  // Monthly Compliance Rate
+  const monthlyPlannedCount = monthlyPlans.filter(p => p.type_run !== 'Rest Day').length;
+  const complianceRate = monthlyPlannedCount > 0 
+    ? Math.min(100, Math.round((monthlyCompletedRuns.length / monthlyPlannedCount) * 100))
+    : (monthlyCompletedRuns.length > 0 ? 100 : 0);
 
-  // Map plans by date string
-  const planMapByDate = new Map<string, Plan>();
-  plans.forEach(p => planMapByDate.set(p.date, p));
+  // Longest Run in this month
+  const longestRunDist = monthlyCompletedRuns.reduce((max, p) => {
+    const dist = p.actual_log?.actual_distance || 0;
+    return dist > max ? dist : max;
+  }, 0);
 
-  const heatmapCells = [];
-  for (let i = 0; i <= heatmapDaysCount; i++) {
-    const d = new Date(startDate);
-    d.setDate(startDate.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
-    const plan = planMapByDate.get(dateStr);
-    const dist = plan?.actual_log?.is_run ? plan.actual_log.actual_distance : 0;
-    heatmapCells.push({
-      date: dateStr,
-      dayOfWeek: d.getDay(),
-      distance: dist,
-      plan
+  // Monthly Total Duration
+  let totalMinutes = 0;
+  monthlyCompletedRuns.forEach(p => {
+    if (p.actual_log?.actual_duration) {
+      const parts = p.actual_log.actual_duration.split(':').map(Number);
+      if (parts.length === 3) {
+        totalMinutes += parts[0] * 60 + parts[1] + Math.round(parts[2] / 60);
+      } else if (parts.length === 2) {
+        totalMinutes += parts[0] + Math.round(parts[1] / 60);
+      }
+    }
+  });
+  const durationDisplay = totalMinutes > 0 
+    ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m` 
+    : '-';
+
+  // Shoe usage in this month
+  const monthlyShoeMileage = useMemo(() => {
+    const map = new Map<string, number>();
+    monthlyCompletedRuns.forEach(p => {
+      const shoeId = p.actual_log?.shoe_id;
+      if (shoeId && p.actual_log?.actual_distance) {
+        map.set(shoeId, (map.get(shoeId) || 0) + p.actual_log.actual_distance);
+      }
     });
-  }
+    return Array.from(map.entries()).map(([shoeId, dist]) => {
+      const shoe = gears.find(g => g.id === shoeId);
+      return {
+        id: shoeId,
+        name: shoe ? shoe.name : 'Running Shoe',
+        distance: dist
+      };
+    });
+  }, [monthlyCompletedRuns, gears]);
 
-  // Determine heatmap cell color intensity
-  const getHeatmapColor = (dist: number) => {
-    if (dist <= 0) return 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-transparent';
-    if (dist < 4) return 'bg-cyan-200 dark:bg-cyan-950 border border-cyan-400 dark:border-cyan-800/50';
-    if (dist < 8) return 'bg-cyan-400 dark:bg-cyan-800';
-    if (dist < 12) return 'bg-cyan-500 dark:bg-cyan-600';
-    return 'bg-cyan-600 dark:bg-cyan-400 ring-1 ring-cyan-300 shadow-sm shadow-cyan-500/30';
-  };
+  // Generate days for Monthly Calendar Grid
+  const calendarDays = useMemo(() => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const firstDayOfMonth = new Date(year, month - 1, 1);
+    const lastDayOfMonth = new Date(year, month, 0);
+    const totalDays = lastDayOfMonth.getDate();
+    
+    // Day of week for 1st day (0 = Sun, 1 = Mon ... shift so Mon is 0)
+    let startDayIndex = firstDayOfMonth.getDay() - 1;
+    if (startDayIndex < 0) startDayIndex = 6; // Sunday becomes index 6
+
+    const planMap = new Map<string, Plan>();
+    monthlyPlans.forEach(p => planMap.set(p.date, p));
+
+    const cells = [];
+    
+    // Leading empty cells for preceding month padding
+    for (let i = 0; i < startDayIndex; i++) {
+      cells.push({
+        dayNumber: null,
+        dateStr: '',
+        plan: null,
+        isPadding: true
+      });
+    }
+
+    // Days of current month
+    for (let day = 1; day <= totalDays; day++) {
+      const dateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
+      const plan = planMap.get(dateStr) || null;
+      cells.push({
+        dayNumber: day,
+        dateStr,
+        plan,
+        isPadding: false
+      });
+    }
+
+    return cells;
+  }, [selectedMonth, monthlyPlans]);
 
   const getShoeName = (shoeId?: string) => {
     if (!shoeId) return '-';
@@ -91,77 +194,146 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     return shoe ? shoe.name : '-';
   };
 
+  const isCurrentMonth = selectedMonth === currentMonthStr;
+
   return (
     <div id="summary-page-view" className="space-y-6 animate-in fade-in duration-300">
-      {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Month Navigator Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight uppercase">
-            {t('analytics_header')}
-          </h1>
+          <div className="flex items-center space-x-2">
+            <span className="p-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400">
+              <Calendar className="w-4 h-4" />
+            </span>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight capitalize">
+              {monthDisplayLabel}
+            </h1>
+            {isCurrentMonth && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
+                {t('this_month')}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {t('analytics_subtitle')}
+            {language === 'id' 
+              ? 'Statistik evaluasi target vs aktual khusus untuk bulan yang dipilih'
+              : 'Target vs actual performance metrics strictly for the selected month'}
           </p>
         </div>
 
+        {/* Month Navigation Controls */}
         <div className="flex items-center space-x-2">
-          <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-            {language === 'id' ? 'Total Sesi:' : 'Total Sessions:'}{' '}
-            <strong className="text-slate-900 dark:text-white">{plans.length}</strong>
-          </span>
+          <button
+            id="analytics-prev-month-btn"
+            onClick={() => navigateMonth('prev')}
+            title={t('prev_month')}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Month Dropdown Picker */}
+          <select
+            id="analytics-month-select"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-3 py-2 text-xs font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500 cursor-pointer shadow-xs"
+          >
+            {availableMonths.map((m) => {
+              const [y, mon] = m.split('-').map(Number);
+              const label = new Date(y, mon - 1, 1).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+                month: 'short',
+                year: 'numeric'
+              });
+              return (
+                <option key={m} value={m}>
+                  {label} {m === currentMonthStr ? `(${t('this_month')})` : ''}
+                </option>
+              );
+            })}
+          </select>
+
+          <button
+            id="analytics-next-month-btn"
+            onClick={() => navigateMonth('next')}
+            title={t('next_month')}
+            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+
+          {!isCurrentMonth && (
+            <button
+              id="analytics-today-month-btn"
+              onClick={() => setSelectedMonth(currentMonthStr)}
+              className="px-3 py-2 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-xs font-semibold transition-all cursor-pointer"
+            >
+              {t('this_month')}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Top 4 Metrics Row */}
+      {/* Top 4 Monthly Metrics Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Monthly Distance */}
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('stat_total_distance')}</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('monthly_distance')}</span>
             <span className="p-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400">
               <Footprints className="w-4 h-4" />
             </span>
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mt-3">
-            {totalActualDistance.toFixed(1)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">km</span>
+            {monthlyActualDistance.toFixed(1)} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">km</span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {language === 'id' ? `Dari target ${totalPlannedDistance.toFixed(1)} km` : `Out of ${totalPlannedDistance.toFixed(1)} km target`}
+            {language === 'id' 
+              ? `Target rencana: ${monthlyPlannedDistance.toFixed(1)} km` 
+              : `Planned target: ${monthlyPlannedDistance.toFixed(1)} km`}
           </div>
         </div>
 
+        {/* Monthly Average Pace */}
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('stat_avg_pace')}</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('monthly_avg_pace')}</span>
             <span className="p-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400">
               <Activity className="w-4 h-4" />
             </span>
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mt-3">
-            {avgPace} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">min/km</span>
+            {monthlyAvgPace} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">min/km</span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {language === 'id' ? 'Akumulasi seluruh sesi lari' : 'Accumulated across all runs'}
+            {language === 'id' 
+              ? `${monthlyCompletedRuns.length} sesi lari di ${monthDisplayLabel}` 
+              : `${monthlyCompletedRuns.length} runs in ${monthDisplayLabel}`}
           </div>
         </div>
 
+        {/* Monthly Completed Runs */}
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('stat_total_runs')}</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('monthly_runs')}</span>
             <span className="p-1.5 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400">
               <Flame className="w-4 h-4" />
             </span>
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mt-3">
-            {completedRuns.length} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'id' ? 'sesi' : 'runs'}</span>
+            {monthlyCompletedRuns.length} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">{language === 'id' ? 'sesi' : 'runs'}</span>
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {language === 'id' ? 'Log aktual terverifikasi' : 'Verified completed logs'}
+            {durationDisplay !== '-' 
+              ? `${language === 'id' ? 'Total waktu lari:' : 'Total time:'} ${durationDisplay}`
+              : (language === 'id' ? 'Sesi tercatat' : 'Recorded sessions')}
           </div>
         </div>
 
+        {/* Monthly Compliance Rate */}
         <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Compliance Rate</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">{t('monthly_compliance')}</span>
             <span className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
               <Target className="w-4 h-4" />
             </span>
@@ -170,51 +342,220 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
             {complianceRate}%
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {language === 'id' ? 'Tingkat kepatuhan jadwal' : 'Schedule completion rate'}
+            {language === 'id' 
+              ? `${monthlyCompletedRuns.length} dari ${monthlyPlannedCount} rencana terlaksana` 
+              : `${monthlyCompletedRuns.length} of ${monthlyPlannedCount} planned runs completed`}
           </div>
         </div>
       </div>
 
-      {/* Activity Heatmap Chart */}
+      {/* Monthly Highlights Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-mono text-slate-500">{t('longest_run')}</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
+              {longestRunDist > 0 ? `${longestRunDist} km` : '-'}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+            <Heart className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-mono text-slate-500">{t('stat_avg_hr')}</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
+              {avgHR ? `${avgHR} bpm` : '-'}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-mono text-slate-500">{t('active_days')}</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
+              {monthlyCompletedRuns.length} {language === 'id' ? 'Hari' : 'Days'}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase font-mono text-slate-500">{t('duration')}</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">
+              {durationDisplay}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Monthly Activity Calendar View */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center space-x-2">
-              <Flame className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span>{language === 'id' ? 'Activity Heatmap (16 Minggu Terakhir)' : 'Activity Heatmap (Last 16 Weeks)'}</span>
+            <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+              <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <span>{t('monthly_calendar')} — {monthDisplayLabel}</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {language === 'id' 
-                ? 'Intensitas warna merepresentasikan akumulasi jarak tempuh harian (km)' 
-                : 'Color intensity represents daily completed mileage (km)'}
+                ? 'Peta aktivitas harian untuk melihat konsistensi lari sepanjang bulan ini'
+                : 'Daily activity map highlighting running consistency across this month'}
             </p>
           </div>
 
-          {/* Heatmap color scale legend */}
-          <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 font-mono">
-            <span>0km</span>
-            <div className="w-3 h-3 rounded-xs bg-slate-100 dark:bg-slate-800/80 border border-slate-300 dark:border-transparent" />
-            <div className="w-3 h-3 rounded-xs bg-cyan-200 dark:bg-cyan-950 border border-cyan-400 dark:border-cyan-800/50" />
-            <div className="w-3 h-3 rounded-xs bg-cyan-400 dark:bg-cyan-800" />
-            <div className="w-3 h-3 rounded-xs bg-cyan-500 dark:bg-cyan-600" />
-            <div className="w-3 h-3 rounded-xs bg-cyan-600 dark:bg-cyan-400" />
-            <span>12km+</span>
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 font-mono">
+            <span className="flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-cyan-500 dark:bg-cyan-400" />
+              <span>{language === 'id' ? 'Lari Selesai' : 'Completed Run'}</span>
+            </span>
+            <span className="flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs border border-dashed border-cyan-400 dark:border-cyan-500" />
+              <span>{language === 'id' ? 'Rencana' : 'Planned'}</span>
+            </span>
+            <span className="flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 rounded-xs bg-slate-200 dark:bg-slate-800" />
+              <span>Rest Day</span>
+            </span>
           </div>
         </div>
 
-        {/* Heatmap Grid */}
-        <div className="overflow-x-auto pb-2">
-          <div className="inline-grid grid-rows-7 grid-flow-col gap-1.5 min-w-[650px]">
-            {heatmapCells.map((cell, idx) => (
+        {/* Days of Week Header */}
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-mono uppercase text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-2">
+          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+            <div key={day} className="py-1">{day}</div>
+          ))}
+        </div>
+
+        {/* Monthly Calendar Grid */}
+        <div className="grid grid-cols-7 gap-1.5">
+          {calendarDays.map((cell, idx) => {
+            if (cell.isPadding || !cell.dayNumber) {
+              return (
+                <div 
+                  key={`pad-${idx}`} 
+                  className="min-h-[64px] rounded-2xl bg-slate-50/50 dark:bg-slate-900/20 border border-transparent opacity-30" 
+                />
+              );
+            }
+
+            const plan = cell.plan;
+            const isCompleted = plan?.actual_log?.is_run;
+            const isRest = plan?.type_run === 'Rest Day';
+            const hasPlanPending = plan && !isCompleted && !isRest;
+            const isCellToday = cell.dateStr === today.toISOString().split('T')[0];
+
+            return (
               <div
-                key={idx}
-                title={`${cell.date}: ${cell.distance > 0 ? `${cell.distance} km (${cell.plan?.type_run})` : (language === 'id' ? 'Tidak lari' : 'Rest/No run')}`}
-                className={`w-3.5 h-3.5 rounded-xs transition-transform hover:scale-125 cursor-pointer ${getHeatmapColor(cell.distance)}`}
-              />
+                key={cell.dateStr}
+                className={`min-h-[64px] p-2 rounded-2xl border transition-all flex flex-col justify-between ${
+                  isCellToday ? 'ring-2 ring-cyan-500/50' : ''
+                } ${
+                  isCompleted
+                    ? 'bg-cyan-50/80 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800/60'
+                    : isRest
+                    ? 'bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800/60 opacity-70'
+                    : hasPlanPending
+                    ? 'bg-blue-50/50 dark:bg-blue-950/30 border-dashed border-cyan-400/70 dark:border-cyan-600/70'
+                    : 'bg-white dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/60'
+                }`}
+                title={
+                  plan 
+                    ? `${cell.dateStr}: ${plan.type_run} ${isCompleted ? `(${plan.actual_log?.actual_distance} km)` : ''}`
+                    : `${cell.dateStr}: No run`
+                }
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-[11px] font-mono font-bold ${
+                    isCellToday ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-600 dark:text-slate-400'
+                  }`}>
+                    {cell.dayNumber}
+                  </span>
+                  {isCompleted && (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  )}
+                </div>
+
+                <div className="mt-1">
+                  {isCompleted ? (
+                    <div>
+                      <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300">
+                        {plan.actual_log?.actual_distance}k
+                      </div>
+                      <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                        {plan.type_run}
+                      </div>
+                    </div>
+                  ) : isRest ? (
+                    <div className="text-[10px] font-mono text-slate-400 italic">
+                      Rest
+                    </div>
+                  ) : hasPlanPending ? (
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        {plan.target_distance}k
+                      </div>
+                      <div className="text-[9px] font-mono text-slate-400 truncate">
+                        Plan
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-slate-300 dark:text-slate-700">-</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Shoe Mileage Breakdown for Selected Month */}
+      {monthlyShoeMileage.length > 0 && (
+        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs space-y-3">
+          <div className="flex items-center space-x-2">
+            <Footprints className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              {t('shoe_mileage_this_month')} ({monthDisplayLabel})
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {monthlyShoeMileage.map(shoe => (
+              <div 
+                key={shoe.id}
+                className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/50 flex items-center justify-between"
+              >
+                <div className="truncate pr-2">
+                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {shoe.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    {language === 'id' ? 'Pemakaian bulan ini' : 'Usage this month'}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-bold text-cyan-600 dark:text-cyan-400">
+                    {shoe.distance.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-slate-500 ml-0.5">km</span>
+                </div>
+              </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Monthly Review Table */}
       <div className="p-6 rounded-3xl bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs space-y-4">
@@ -225,13 +566,18 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
             </div>
             <div>
               <h2 className="text-xs font-semibold text-slate-700 dark:text-slate-400 uppercase tracking-wider">
-                {language === 'id' ? 'Rekapitulasi Evaluasi Target vs Aktual' : 'Evaluation Log: Target vs Actual'}
+                {language === 'id' ? `Evaluasi Log Lari: ${monthDisplayLabel}` : `Running Logs: ${monthDisplayLabel}`}
               </h2>
               <p className="text-xs text-slate-500">
-                {language === 'id' ? 'Tabel riwayat perbandingan performa lari' : 'Historical running performance comparison table'}
+                {language === 'id' 
+                  ? `Daftar seluruh sesi dan rencana lari pada ${monthDisplayLabel}` 
+                  : `All planned and completed running sessions in ${monthDisplayLabel}`}
               </p>
             </div>
           </div>
+          <span className="text-xs font-mono text-slate-500">
+            {monthlyPlans.length} {language === 'id' ? 'Catatan' : 'Entries'}
+          </span>
         </div>
 
         {/* Table responsive */}
@@ -250,14 +596,15 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-              {plans.length === 0 ? (
+              {monthlyPlans.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 dark:text-slate-500">
-                    {t('no_recent_activities')}
+                  <td colSpan={8} className="py-10 text-center text-slate-400 dark:text-slate-500">
+                    <Footprints className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs">{t('no_sessions_this_month')} ({monthDisplayLabel})</p>
                   </td>
                 </tr>
               ) : (
-                plans.map((p) => {
+                monthlyPlans.map((p) => {
                   const isRun = p.actual_log?.is_run;
                   const isRest = p.type_run === 'Rest Day';
                   const shoe = getShoeName(p.actual_log?.shoe_id);
@@ -315,4 +662,5 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     </div>
   );
 };
+
 
