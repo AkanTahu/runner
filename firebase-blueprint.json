@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and personal running preferences",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "settings": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Running plan, workout schedule, and actual run log entry",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 32 },
+        "time": { "type": "string", "maxLength": 32 },
+        "type_run": { "type": "string", "maxLength": 64 },
+        "target_distance": { "type": "number" },
+        "target_avg_pace": { "type": "string", "maxLength": 32 },
+        "target_location": { "type": "string", "maxLength": 256 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "strategy_details": { "type": "object" },
+        "actual_log": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "date", "type_run"]
+    },
+    "Gear": {
+      "title": "Gear",
+      "description": "Running gear catalog and shoe mileage tracker",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "category": { "type": "string", "enum": ["Sepatu", "Jam", "Baju"] },
+        "name": { "type": "string", "maxLength": 128 },
+        "image_url": { "type": "string", "maxLength": 1024 },
+        "total_distance": { "type": "number" },
+        "is_active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "category", "name", "total_distance", "is_active"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile document indexed by Firebase Auth UID"
+    },
+    "/plans/{planId}": {
+      "schema": "Plan",
+      "description": "Running plan and actual activity log collection"
+    },
+    "/gears/{gearId}": {
+      "schema": "Gear",
+      "description": "Running gear and shoe mileage tracking documents"
+    }
+  }
+}
