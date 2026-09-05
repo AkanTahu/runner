@@ -14,7 +14,7 @@ import { subscribeGears, seedDefaultGearsIfEmpty } from './lib/gearService';
 import { Loader2, Footprints } from 'lucide-react';
 
 const MainApp: React.FC = () => {
-  const { user, userProfile, loading, signInWithGoogle } = useAuth();
+  const { user, userProfile, loading, signInWithGoogle, t, language } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'plans' | 'summary' | 'gears'>('dashboard');
   const [showSplash, setShowSplash] = useState<boolean>(() => {
@@ -116,7 +116,7 @@ const MainApp: React.FC = () => {
           <Footprints className="w-6 h-6" />
         </div>
         <p className="text-xs font-mono uppercase tracking-widest text-slate-400">
-          Memuat Personal Running Tracker...
+          {language === 'id' ? 'Memuat Personal Running Tracker...' : 'Loading Personal Running Tracker...'}
         </p>
       </div>
     );
@@ -153,7 +153,12 @@ const MainApp: React.FC = () => {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
               </span>
               <span>
-                <strong className="font-semibold text-cyan-700 dark:text-cyan-400">Mode Tamu (Penyimpanan Lokal):</strong> Aktivitas dan gear tersimpan di perangkat ini. Masuk dengan Google untuk sinkronisasi cloud real-time.
+                <strong className="font-semibold text-cyan-700 dark:text-cyan-400">
+                  {language === 'id' ? 'Mode Tamu (Penyimpanan Lokal):' : 'Guest Mode (Local Storage):'}
+                </strong>{' '}
+                {language === 'id' 
+                  ? 'Aktivitas dan gear tersimpan di perangkat ini. Masuk dengan Google untuk sinkronisasi cloud real-time.' 
+                  : 'Activities and gear are saved locally on this browser. Sign in with Google to sync across devices.'}
               </span>
             </div>
             <button
@@ -161,7 +166,7 @@ const MainApp: React.FC = () => {
               onClick={() => signInWithGoogle()}
               className="shrink-0 px-3.5 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold tracking-wide transition shadow-sm cursor-pointer"
             >
-              Masuk Google
+              {language === 'id' ? 'Masuk Google' : 'Sign in with Google'}
             </button>
           </div>
         )}
@@ -170,7 +175,7 @@ const MainApp: React.FC = () => {
           <div className="py-24 flex flex-col items-center justify-center space-y-3">
             <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
             <p className="text-xs font-mono text-slate-400">
-              Sinkronisasi data Firestore...
+              {language === 'id' ? 'Sinkronisasi data...' : 'Synchronizing data...'}
             </p>
           </div>
         ) : (

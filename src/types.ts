@@ -1,5 +1,7 @@
 export type ThemeMode = 'light' | 'dark';
 
+export type Language = 'en' | 'id';
+
 export type RunType = 
   | 'Recovery' 
   | 'Easy' 
@@ -62,6 +64,7 @@ export interface Gear {
 export interface UserSettings {
   motivation_quote: string;
   theme_preference: ThemeMode;
+  language_preference?: Language;
   runner_name?: string;
   weekly_target_km?: number;
 }

@@ -9,11 +9,11 @@ import {
   Heart, 
   CheckCircle2, 
   Footprints, 
-  FileText,
-  Flame
+  FileText
 } from 'lucide-react';
 import { Plan, ActualLog, RunType, Gear } from '../types';
 import { createPlan, updatePlan } from '../lib/planService';
+import { useAuth } from '../lib/authContext';
 
 interface RunModalProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ export const RunModal: React.FC<RunModalProps> = ({
   existingPlan,
   initialMode = 'quick_log'
 }) => {
+  const { t, language } = useAuth();
   const [activeTab, setActiveTab] = useState<'quick_log' | 'plan' | 'actual'>(initialMode);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +98,6 @@ export const RunModal: React.FC<RunModalProps> = ({
         setActualNotes(existingPlan.actual_log.actual_description || '');
         setActiveTab('actual');
       } else if (initialMode === 'actual') {
-        // Pre-fill actual distance & pace from plan target
         setIsRun(true);
         setActualDistance(existingPlan.target_distance > 0 ? existingPlan.target_distance.toString() : '5.0');
         setActualPace(existingPlan.target_avg_pace !== '-' ? existingPlan.target_avg_pace : '05:30');
@@ -167,7 +167,6 @@ export const RunModal: React.FC<RunModalProps> = ({
       const effectiveTargetPace = isRestDay ? '-' : targetPace;
 
       if (activeTab === 'quick_log') {
-        // Direct run recording with date, time, distance, duration, notes, shoe
         const parsedActualDistance = parseFloat(actualDistance) || 0;
         const actual_log: ActualLog = {
           is_run: isRun,
@@ -206,7 +205,6 @@ export const RunModal: React.FC<RunModalProps> = ({
           });
         }
       } else if (activeTab === 'plan') {
-        // Create or update plan
         if (existingPlan?.id) {
           await updatePlan(existingPlan.id, {
             date,
@@ -232,7 +230,6 @@ export const RunModal: React.FC<RunModalProps> = ({
           });
         }
       } else if (activeTab === 'actual') {
-        // Log actual workout to existing or new plan
         const parsedActualDistance = isRun ? (parseFloat(actualDistance) || 0) : 0;
         const actual_log: ActualLog = {
           is_run: isRun,
@@ -268,7 +265,7 @@ export const RunModal: React.FC<RunModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error saving run activity:', err);
-      setError(err.message || 'Failed to save run record to Firestore');
+      setError(err.message || 'Failed to save run record');
     } finally {
       setSubmitting(false);
     }
@@ -287,29 +284,29 @@ export const RunModal: React.FC<RunModalProps> = ({
     >
       <div 
         id="run-modal-container"
-        className="relative w-full max-w-xl bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 my-auto overflow-hidden animate-in fade-in zoom-in-95 duration-200"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+            <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
               <Footprints className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                 {existingPlan 
-                  ? (activeTab === 'actual' ? 'Log Hasil Lari (Actual)' : 'Edit Jadwal Lari')
-                  : 'Catat Aktivitas Lari'}
+                  ? (activeTab === 'actual' ? (language === 'id' ? 'Log Hasil Lari (Aktual)' : 'Log Completed Run (Actual)') : (language === 'id' ? 'Edit Jadwal Lari' : 'Edit Running Plan'))
+                  : (language === 'id' ? 'Catat Aktivitas Lari' : 'Record Running Activity')}
               </h2>
-              <p className="text-xs text-slate-400">
-                Data tersimpan otomatis ke database Firestore
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {language === 'id' ? 'Tersimpan otomatis ke database' : 'Automatically saved to database'}
               </p>
             </div>
           </div>
           <button
             id="close-modal-btn"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -317,30 +314,30 @@ export const RunModal: React.FC<RunModalProps> = ({
 
         {/* Tab Selector */}
         {!existingPlan && (
-          <div className="grid grid-cols-2 p-1.5 mx-6 mt-4 bg-slate-800/80 rounded-2xl border border-slate-700/50">
+          <div className="grid grid-cols-2 p-1.5 mx-6 mt-4 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/50">
             <button
               type="button"
               id="tab-quick-log"
               onClick={() => setActiveTab('quick_log')}
-              className={`py-2 text-xs font-semibold rounded-xl transition-all ${
+              className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
                 activeTab === 'quick_log'
-                  ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-xs'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/20 text-cyan-700 dark:text-cyan-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Input Hasil Lari (Selesai)
+              {language === 'id' ? 'Input Hasil Lari (Selesai)' : 'Log Completed Run'}
             </button>
             <button
               type="button"
               id="tab-plan"
               onClick={() => setActiveTab('plan')}
-              className={`py-2 text-xs font-semibold rounded-xl transition-all ${
+              className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
                 activeTab === 'plan'
-                  ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-xs'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-300 dark:border-cyan-500/20 text-cyan-700 dark:text-cyan-400 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              Buat Jadwal (Plan)
+              {language === 'id' ? 'Buat Jadwal (Plan)' : 'Create Plan'}
             </button>
           </div>
         )}
@@ -348,7 +345,7 @@ export const RunModal: React.FC<RunModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {error && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-500 dark:text-rose-400">
               {error}
             </div>
           )}
@@ -356,34 +353,34 @@ export const RunModal: React.FC<RunModalProps> = ({
           {/* Date & Time Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Tanggal Lari
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {language === 'id' ? 'Tanggal Lari' : 'Run Date'}
               </label>
               <div className="relative">
-                <Calendar className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
                 <input
                   type="date"
                   id="run-input-date"
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all cursor-pointer"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Waktu Mulai
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                {language === 'id' ? 'Waktu Mulai' : 'Start Time'}
               </label>
               <div className="relative">
-                <Clock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                <Clock className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
                 <input
                   type="time"
                   id="run-input-time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all cursor-pointer"
                 />
               </div>
             </div>
@@ -391,8 +388,8 @@ export const RunModal: React.FC<RunModalProps> = ({
 
           {/* Run Type selector */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-              Tipe Lari (Type Run)
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              {language === 'id' ? 'Tipe Lari (Run Type)' : 'Run Type'}
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {RUN_TYPES.map((type) => {
@@ -404,12 +401,12 @@ export const RunModal: React.FC<RunModalProps> = ({
                     type="button"
                     id={`select-run-type-${type.toLowerCase().replace(/\s+/g, '-')}`}
                     onClick={() => setTypeRun(type)}
-                    className={`py-2 px-1 text-center rounded-xl text-xs font-semibold transition-all border ${
+                    className={`py-2 px-1 text-center rounded-xl text-xs font-semibold transition-all border cursor-pointer ${
                       selected
                         ? (isRest 
-                            ? 'bg-slate-700 text-slate-200 border-slate-600 font-bold' 
+                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-400 dark:border-slate-600 font-bold' 
                             : 'bg-cyan-500 text-slate-950 font-bold border-cyan-400 shadow-md shadow-cyan-500/20')
-                        : 'bg-slate-800/80 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-slate-200'
+                        : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-slate-200'
                     }`}
                   >
                     {type}
@@ -419,25 +416,27 @@ export const RunModal: React.FC<RunModalProps> = ({
             </div>
             {isRestDay && (
               <p className="text-xs text-slate-500 mt-1 italic">
-                * Rest Day akan otomatis di-styling abu-abu pudar untuk istirahat & pemulihan otot.
+                {language === 'id' 
+                  ? '* Rest Day akan otomatis diformat untuk istirahat & pemulihan otot.' 
+                  : '* Rest Day is automatically formatted for muscle rest & recovery.'}
               </p>
             )}
           </div>
 
           {/* Location */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Lokasi Lari
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              {language === 'id' ? 'Lokasi Lari' : 'Run Location'}
             </label>
             <div className="relative">
-              <MapPin className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+              <MapPin className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
               <input
                 type="text"
                 id="run-input-location"
-                placeholder="Contoh: Gelora Bung Karno, Sudirman Loop, Ragunan"
+                placeholder={language === 'id' ? 'Contoh: Gelora Bung Karno, Sudirman Loop, Ragunan' : 'E.g., Central Park Loop, Track Stadium'}
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
               />
             </div>
           </div>
@@ -448,8 +447,8 @@ export const RunModal: React.FC<RunModalProps> = ({
               {!isRestDay && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Target Jarak (Km)
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {language === 'id' ? 'Target Jarak (Km)' : 'Target Distance (Km)'}
                     </label>
                     <input
                       type="number"
@@ -459,12 +458,12 @@ export const RunModal: React.FC<RunModalProps> = ({
                       required
                       value={targetDistance}
                       onChange={(e) => setTargetDistance(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Target Avg Pace (min/km)
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {language === 'id' ? 'Target Avg Pace (min/km)' : 'Target Avg Pace (min/km)'}
                     </label>
                     <input
                       type="text"
@@ -472,7 +471,7 @@ export const RunModal: React.FC<RunModalProps> = ({
                       placeholder="05:30"
                       value={targetPace}
                       onChange={(e) => setTargetPace(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                      className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                     />
                   </div>
                 </div>
@@ -480,51 +479,51 @@ export const RunModal: React.FC<RunModalProps> = ({
 
               {/* Strategy Details for Tempo / Interval / Long Run */}
               {showStrategyFields && (
-                <div className="p-4 bg-cyan-950/20 border border-cyan-500/20 rounded-2xl space-y-3">
-                  <div className="flex items-center space-x-2 text-cyan-400 font-semibold text-xs">
+                <div className="p-4 bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-500/20 rounded-2xl space-y-3">
+                  <div className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400 font-semibold text-xs">
                     <Zap className="w-4 h-4" />
-                    <span>Fitur Strategi Lari ({typeRun})</span>
+                    <span>{language === 'id' ? `Fitur Strategi Lari (${typeRun})` : `Strategy Details (${typeRun})`}</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Warm Up
                     </label>
                     <input
                       type="text"
                       id="strategy-warmup"
-                      placeholder="Contoh: 1.5 km jog santai + ABC dynamic drills"
+                      placeholder={language === 'id' ? 'Contoh: 1.5 km jog santai + drills' : 'E.g., 1.5 km easy jog + dynamic drills'}
                       value={warmUp}
                       onChange={(e) => setWarmUp(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500"
+                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
-                      Speed Session / Pacing Main Set
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                      Speed Session / Main Set
                     </label>
                     <input
                       type="text"
                       id="strategy-speedsession"
-                      placeholder="Contoh: 5 x 800m di pace 04:45 dengan 90s jog recovery"
+                      placeholder={language === 'id' ? 'Contoh: 5 x 800m di pace 04:45' : 'E.g., 5 x 800m at 04:45 pace'}
                       value={speedSession}
                       onChange={(e) => setSpeedSession(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500"
+                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                       Cooldown
                     </label>
                     <input
                       type="text"
                       id="strategy-cooldown"
-                      placeholder="Contoh: 1 km jalan santai + peregangan hamstring & betis"
+                      placeholder={language === 'id' ? 'Contoh: 1 km jalan santai + peregangan' : 'E.g., 1 km easy jog + static stretch'}
                       value={cooldown}
                       onChange={(e) => setCooldown(e.target.value)}
-                      className="w-full px-3 py-1.5 text-xs bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500"
+                      className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -532,16 +531,16 @@ export const RunModal: React.FC<RunModalProps> = ({
 
               {/* Description / Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Catatan / Rencana Latihan
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  {language === 'id' ? 'Catatan / Rencana Latihan' : 'Plan Notes & Instructions'}
                 </label>
                 <textarea
                   rows={2}
                   id="plan-description"
-                  placeholder="Instruksi rute, target hidrasi, atau fokus form lari..."
+                  placeholder={language === 'id' ? 'Instruksi rute, target hidrasi, atau fokus form lari...' : 'Route instructions, hydration, cadence focus...'}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                 />
               </div>
             </>
@@ -549,18 +548,18 @@ export const RunModal: React.FC<RunModalProps> = ({
 
           {/* ACTUAL RUN SPECIFIC FIELDS */}
           {(activeTab === 'quick_log' || activeTab === 'actual') && (
-            <div className="space-y-4 pt-2 border-t border-slate-800">
+            <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
               {/* Checkbox isRun */}
-              <div className="flex items-center space-x-2 bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
+              <div className="flex items-center space-x-2 bg-emerald-50 dark:bg-emerald-500/10 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-500/20">
                 <input
                   type="checkbox"
                   id="actual-isrun-checkbox"
                   checked={isRun}
                   onChange={(e) => setIsRun(e.target.checked)}
-                  className="w-4 h-4 accent-emerald-500 rounded"
+                  className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
                 />
-                <label htmlFor="actual-isrun-checkbox" className="text-xs font-semibold text-emerald-400 cursor-pointer">
-                  Aktivitas berhasil dilaksanakan (isRun: True)
+                <label htmlFor="actual-isrun-checkbox" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer">
+                  {language === 'id' ? 'Aktivitas berhasil dilaksanakan (isRun: True)' : 'Run completed successfully (isRun: True)'}
                 </label>
               </div>
 
@@ -569,8 +568,8 @@ export const RunModal: React.FC<RunModalProps> = ({
                   {/* Distance & Duration Row */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Jarak Aktual (Km) *
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        {language === 'id' ? 'Jarak Aktual (Km) *' : 'Actual Distance (Km) *'}
                       </label>
                       <input
                         type="number"
@@ -583,12 +582,12 @@ export const RunModal: React.FC<RunModalProps> = ({
                           setActualDistance(e.target.value);
                           calculatePaceFromDuration(parseFloat(e.target.value), actualDuration);
                         }}
-                        className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Durasi (hh:mm:ss) *
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        {language === 'id' ? 'Durasi (hh:mm:ss) *' : 'Duration (hh:mm:ss) *'}
                       </label>
                       <input
                         type="text"
@@ -600,7 +599,7 @@ export const RunModal: React.FC<RunModalProps> = ({
                           setActualDuration(e.target.value);
                           calculatePaceFromDuration(parseFloat(actualDistance), e.target.value);
                         }}
-                        className="w-full px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                       />
                     </div>
                   </div>
@@ -608,24 +607,24 @@ export const RunModal: React.FC<RunModalProps> = ({
                   {/* Pace & Heart Rate Row */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Pace Rata-rata (min/km)
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        {language === 'id' ? 'Pace Rata-rata (min/km)' : 'Avg Pace (min/km)'}
                       </label>
                       <div className="relative">
-                        <Activity className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                        <Activity className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
                         <input
                           type="text"
                           id="actual-pace-input"
                           placeholder="05:20"
                           value={actualPace}
                           onChange={(e) => setActualPace(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Detak Jantung (Avg bpm)
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        {language === 'id' ? 'Detak Jantung (Avg bpm)' : 'Heart Rate (Avg bpm)'}
                       </label>
                       <div className="relative">
                         <Heart className="w-4 h-4 text-rose-500 absolute left-3 top-3" />
@@ -635,7 +634,7 @@ export const RunModal: React.FC<RunModalProps> = ({
                           placeholder="145"
                           value={avgHeartRate}
                           onChange={(e) => setAvgHeartRate(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                         />
                       </div>
                     </div>
@@ -643,19 +642,19 @@ export const RunModal: React.FC<RunModalProps> = ({
 
                   {/* Shoe Selector */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                      <span>Pilih Sepatu Lari (Shoe Mileage Tracking)</span>
-                      <span className="text-[11px] text-cyan-400 font-normal">
-                        Otomatis mengakumulasi km
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                      <span>{language === 'id' ? 'Pilih Sepatu Lari' : 'Select Running Shoes'}</span>
+                      <span className="text-[11px] text-cyan-600 dark:text-cyan-400 font-normal">
+                        {language === 'id' ? 'Otomatis mengakumulasi km' : 'Auto accumulates mileage'}
                       </span>
                     </label>
                     <select
                       id="actual-shoe-select"
                       value={selectedShoeId}
                       onChange={(e) => setSelectedShoeId(e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                      className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all cursor-pointer"
                     >
-                      <option value="">-- Tanpa Spesifik Sepatu --</option>
+                      <option value="">{language === 'id' ? '-- Tanpa Spesifik Sepatu --' : '-- No specific shoe --'}</option>
                       {shoes.map((shoe) => (
                         <option key={shoe.id} value={shoe.id}>
                           👟 {shoe.name} ({shoe.total_distance.toFixed(1)} km / {shoe.max_distance || 700} km)
@@ -666,18 +665,18 @@ export const RunModal: React.FC<RunModalProps> = ({
 
                   {/* Notes */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Catatan & Evaluasi Lari (Notes)
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {language === 'id' ? 'Catatan & Evaluasi Lari' : 'Run Notes & Reflection'}
                     </label>
                     <div className="relative">
-                      <FileText className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                      <FileText className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
                       <textarea
                         rows={2}
                         id="run-input-notes"
-                        placeholder="Bagaimana kondisi fisik, detak jantung, kelelahan kaki, atau cuaca hari ini?"
+                        placeholder={language === 'id' ? 'Bagaimana kondisi fisik, detak jantung, atau cuaca hari ini?' : 'How did you feel? Weather, fatigue, energy level...'}
                         value={actualNotes}
                         onChange={(e) => setActualNotes(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                        className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
                       />
                     </div>
                   </div>
@@ -687,29 +686,29 @@ export const RunModal: React.FC<RunModalProps> = ({
           )}
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               id="cancel-modal-btn"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Batal
+              {t('cancel')}
             </button>
             <button
               type="submit"
               id="submit-run-btn"
               disabled={submitting}
-              className="px-6 py-2.5 text-sm font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-95 flex items-center space-x-2 disabled:opacity-50"
+              className="px-6 py-2.5 text-sm font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 rounded-xl shadow-lg shadow-cyan-500/20 transition-all active:scale-95 flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
             >
               {submitting ? (
-                <span>Menyimpan ke Firestore...</span>
+                <span>{t('saving')}</span>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
-                    {activeTab === 'plan' ? 'Simpan Jadwal Plan' : 'Simpan Data Lari'}
+                    {activeTab === 'plan' ? (language === 'id' ? 'Simpan Jadwal Plan' : 'Save Plan') : (language === 'id' ? 'Simpan Data Lari' : 'Save Run Log')}
                   </span>
                 </>
               )}
@@ -720,3 +719,4 @@ export const RunModal: React.FC<RunModalProps> = ({
     </div>
   );
 };
+

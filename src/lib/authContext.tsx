@@ -9,7 +9,8 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType, testConnection } from './firebase';
-import { UserProfile, UserSettings, ThemeMode } from '../types';
+import { UserProfile, UserSettings, ThemeMode, Language } from '../types';
+import { getTranslation, TranslationKey } from './translations';
 
 interface AuthContextType {
   user: User | null;
@@ -17,6 +18,9 @@ interface AuthContextType {
   loading: boolean;
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: TranslationKey) => string;
   signInWithGoogle: () => Promise<void>;
   signInAsDemoUser: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -26,6 +30,7 @@ interface AuthContextType {
 const defaultSettings: UserSettings = {
   motivation_quote: "It never gets easier, you just go faster. Every mile is a step towards greatness.",
   theme_preference: 'dark',
+  language_preference: 'en',
   runner_name: 'Alex Runner',
   weekly_target_km: 30
 };
@@ -36,6 +41,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [language, setLanguageState] = useState<Language>(() => {
+    const savedLang = localStorage.getItem('running_tracker_lang') as Language | null;
+    if (savedLang === 'en' || savedLang === 'id') {
+      return savedLang;
+    }
+    return 'en'; // Default is English as requested
+  });
+
+  const setLanguage = (newLang: Language) => {
+    setLanguageState(newLang);
+    localStorage.setItem('running_tracker_lang', newLang);
+  };
+
+  const t = (key: TranslationKey) => {
+    return getTranslation(language, key);
+  };
+
   const [theme, setThemeState] = useState<ThemeMode>(() => {
     const savedTheme = localStorage.getItem('running_tracker_theme') as ThemeMode | null;
     if (savedTheme) {
@@ -86,6 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (data.settings?.theme_preference) {
               setTheme(data.settings.theme_preference);
             }
+            if (data.settings?.language_preference) {
+              setLanguage(data.settings.language_preference);
+            }
           } else {
             // First time user setup
             const initialProfile: UserProfile = {
@@ -114,6 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const savedGuest = localStorage.getItem('running_tracker_guest_settings');
           const guestSettings: UserSettings = savedGuest ? JSON.parse(savedGuest) : defaultSettings;
+          if (guestSettings.language_preference) {
+            setLanguage(guestSettings.language_preference);
+          }
           setUserProfile({
             uid: 'guest_runner_personal',
             email: 'guest@runner.local',
@@ -201,6 +229,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newSettings.theme_preference) {
         setTheme(newSettings.theme_preference);
       }
+      if (newSettings.language_preference) {
+        setLanguage(newSettings.language_preference);
+      }
       return;
     }
 
@@ -219,6 +250,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newSettings.theme_preference) {
         setTheme(newSettings.theme_preference);
       }
+      if (newSettings.language_preference) {
+        setLanguage(newSettings.language_preference);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -231,6 +265,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       theme,
       setTheme,
+      language,
+      setLanguage,
+      t,
       signInWithGoogle,
       signInAsDemoUser,
       signOut,

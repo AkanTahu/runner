@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ChevronRight, Flame, Trophy, Activity, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronRight, Activity, Sparkles } from 'lucide-react';
 import { Plan } from '../types';
+import { useAuth } from '../lib/authContext';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -14,6 +15,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   motivationQuote = "It never gets easier, you just go faster. Every mile is a step towards greatness.",
   plans
 }) => {
+  const { t, language } = useAuth();
   const [currentSlide, setCurrentSlide] = useState<number>(1);
 
   // Calculate quick summary for this week
@@ -56,9 +58,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         <button
           id="skip-splash-btn"
           onClick={onComplete}
-          className="text-xs font-medium tracking-wide text-slate-400 hover:text-cyan-400 transition-colors uppercase py-1.5 px-3.5 border border-slate-800 rounded-full hover:border-cyan-500/40 bg-slate-900/60 backdrop-blur-xs"
+          className="text-xs font-medium tracking-wide text-slate-400 hover:text-cyan-400 transition-colors uppercase py-1.5 px-3.5 border border-slate-800 rounded-full hover:border-cyan-500/40 bg-slate-900/60 backdrop-blur-xs cursor-pointer"
         >
-          Lewati (Skip)
+          {language === 'id' ? 'Lewati (Skip)' : 'Skip'}
         </button>
       </div>
 
@@ -76,7 +78,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             >
               <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs tracking-wider uppercase font-semibold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Daily Running Motivation</span>
+                <span>{language === 'id' ? 'Motivasi Lari Harian' : 'Daily Running Motivation'}</span>
               </div>
 
               <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white uppercase leading-none">
@@ -88,7 +90,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               </p>
 
               <div className="text-xs tracking-widest text-slate-500 uppercase font-mono">
-                Pencatatan Konsistensi & Performa Lari Pribadi
+                {language === 'id' ? 'Pencatatan Konsistensi & Performa Lari Pribadi' : 'Personal Running Consistency & Performance Tracker'}
               </div>
             </motion.div>
           ) : (
@@ -102,34 +104,42 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
             >
               <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs tracking-wider uppercase font-semibold">
                 <Activity className="w-3.5 h-3.5" />
-                <span>Weekly Snapshot</span>
+                <span>{language === 'id' ? 'Ringkasan Mingguan' : 'Weekly Snapshot'}</span>
               </div>
 
               <div>
                 <h2 className="text-3xl sm:text-5xl font-black tracking-tight uppercase text-white">
-                  RINGKASAN <span className="text-cyan-400">MINGGU INI</span>
+                  {language === 'id' ? (
+                    <>RINGKASAN <span className="text-cyan-400">MINGGU INI</span></>
+                  ) : (
+                    <>THIS WEEK <span className="text-cyan-400">SNAPSHOT</span></>
+                  )}
                 </h2>
                 <p className="text-sm text-slate-400 mt-2">
-                  Progres akumulasi 7 hari terakhir
+                  {language === 'id' ? 'Progres akumulasi 7 hari terakhir' : 'Accumulated progress over the last 7 days'}
                 </p>
               </div>
 
               {/* Quick metrics cards */}
               <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
                 <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-md text-left">
-                  <div className="text-xs font-mono text-slate-400 uppercase">Total Mileage</div>
+                  <div className="text-xs font-mono text-slate-400 uppercase">{t('stat_total_distance')}</div>
                   <div className="text-3xl font-black text-cyan-400 mt-1">
                     {totalWeeklyMileage.toFixed(1)} <span className="text-sm font-normal text-slate-400">km</span>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">Minggu berjalan</div>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    {language === 'id' ? 'Minggu berjalan' : 'Current week'}
+                  </div>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-slate-900/80 border border-slate-800/80 backdrop-blur-md text-left">
-                  <div className="text-xs font-mono text-slate-400 uppercase">Sesi Lari</div>
+                  <div className="text-xs font-mono text-slate-400 uppercase">{t('stat_total_runs')}</div>
                   <div className="text-3xl font-black text-cyan-300 mt-1">
-                    {totalWeeklyRuns} <span className="text-sm font-normal text-slate-400">sesi</span>
+                    {totalWeeklyRuns} <span className="text-sm font-normal text-slate-400">{language === 'id' ? 'sesi' : 'runs'}</span>
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-1">Konsistensi terlatih</div>
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    {language === 'id' ? 'Konsistensi terlatih' : 'Runs completed'}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -158,18 +168,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           <button
             id="splash-next-slide-btn"
             onClick={() => setCurrentSlide(2)}
-            className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm uppercase tracking-wider transition-transform hover:scale-105 shadow-lg shadow-cyan-500/20 active:scale-95"
+            className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm uppercase tracking-wider transition-transform hover:scale-105 shadow-lg shadow-cyan-500/20 active:scale-95 cursor-pointer"
           >
-            <span>Lanjut Ringkasan</span>
+            <span>{language === 'id' ? 'Lanjut Ringkasan' : 'Next Summary'}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         ) : (
           <button
             id="splash-get-started-btn"
             onClick={onComplete}
-            className="flex items-center space-x-2 px-7 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm uppercase tracking-wider transition-transform hover:scale-105 shadow-lg shadow-cyan-500/25 active:scale-95"
+            className="flex items-center space-x-2 px-7 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm uppercase tracking-wider transition-transform hover:scale-105 shadow-lg shadow-cyan-500/25 active:scale-95 cursor-pointer"
           >
-            <span>Masuk Dashboard</span>
+            <span>{language === 'id' ? 'Masuk Dashboard' : 'Open Dashboard'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         )}
@@ -177,3 +187,4 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     </div>
   );
 };
+

@@ -3,7 +3,6 @@ import {
   Calendar as CalendarIcon, 
   Plus, 
   Search, 
-  Filter, 
   CheckCircle2, 
   Clock, 
   MapPin, 
@@ -14,11 +13,11 @@ import {
   Footprints, 
   Flame, 
   Zap,
-  Coffee,
-  ChevronRight
+  Coffee
 } from 'lucide-react';
 import { Plan, RunType, Gear } from '../types';
 import { deletePlan } from '../lib/planService';
+import { useAuth } from '../lib/authContext';
 
 interface PlanPageProps {
   plans: Plan[];
@@ -37,6 +36,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
   onEditPlan,
   onLogActual
 }) => {
+  const { t, language } = useAuth();
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -67,14 +67,17 @@ export const PlanPage: React.FC<PlanPageProps> = ({
 
   const handleDelete = async (plan: Plan) => {
     if (!plan.id) return;
-    if (!window.confirm(`Hapus jadwal/log lari tanggal ${plan.date}?`)) return;
+    const confirmMsg = language === 'id' 
+      ? `Hapus jadwal/log lari tanggal ${plan.date}?` 
+      : `Delete run schedule/log for ${plan.date}?`;
+    if (!window.confirm(confirmMsg)) return;
 
     setDeletingId(plan.id);
     try {
       await deletePlan(plan.id, plan);
     } catch (err) {
       console.error('Failed to delete plan:', err);
-      alert('Gagal menghapus data dari Firestore.');
+      alert('Failed to delete plan.');
     } finally {
       setDeletingId(null);
     }
@@ -89,7 +92,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
       case 'Long Run':
         return <Footprints className="w-4 h-4 text-purple-500" />;
       case 'Rest Day':
-        return <Coffee className="w-4 h-4 text-zinc-400" />;
+        return <Coffee className="w-4 h-4 text-slate-400" />;
       case 'Recovery':
         return <Activity className="w-4 h-4 text-emerald-500" />;
       default:
@@ -109,11 +112,13 @@ export const PlanPage: React.FC<PlanPageProps> = ({
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight uppercase">
-            Jadwal & Log Lari (Plan)
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight uppercase">
+            {t('plans')}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Manajemen rencana harian dan pencatatan hasil aktual terverifikasi
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {language === 'id' 
+              ? 'Manajemen rencana harian dan pencatatan hasil aktual terverifikasi'
+              : 'Daily schedule management and verified actual performance log'}
           </p>
         </div>
 
@@ -121,44 +126,44 @@ export const PlanPage: React.FC<PlanPageProps> = ({
           <button
             id="plan-page-create-plan-btn"
             onClick={onOpenCreatePlan}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-xs cursor-pointer"
           >
-            <CalendarIcon className="w-4 h-4 text-cyan-400" />
-            <span>+ Buat Rencana (Plan)</span>
+            <CalendarIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <span>+ {t('create_plan')}</span>
           </button>
 
           <button
             id="plan-page-quick-log-btn"
             onClick={onOpenQuickRunModal}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all active:scale-95"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Catat Hasil Selesai</span>
+            <span>{t('log_run_result')}</span>
           </button>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 bg-slate-900/40 rounded-3xl border border-white/5 backdrop-blur-sm">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-white/5 backdrop-blur-sm shadow-xs transition-colors">
         {/* Search input */}
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
           <input
             type="text"
             id="search-plans-input"
-            placeholder="Cari lokasi, tipe lari, atau catatan..."
+            placeholder={language === 'id' ? 'Cari lokasi, tipe lari, atau catatan...' : 'Search location, run type, or note...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-800/60 border border-slate-700/60 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
           />
         </div>
 
         {/* Filter Chips */}
         <div className="flex items-center space-x-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none">
           {[
-            { id: 'all', label: 'Semua' },
-            { id: 'planned', label: 'Pending Plan' },
-            { id: 'completed', label: 'Selesai (Completed)' },
+            { id: 'all', label: language === 'id' ? 'Semua' : 'All' },
+            { id: 'planned', label: language === 'id' ? 'Pending Plan' : 'Pending' },
+            { id: 'completed', label: language === 'id' ? 'Selesai (Completed)' : 'Completed' },
             { id: 'Easy', label: 'Easy' },
             { id: 'Tempo', label: 'Tempo' },
             { id: 'Interval', label: 'Interval' },
@@ -168,10 +173,10 @@ export const PlanPage: React.FC<PlanPageProps> = ({
             <button
               key={chip.id}
               onClick={() => setFilterType(chip.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 filterType === chip.id
-                  ? 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-xs'
-                  : 'bg-slate-800/40 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  ? 'bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-400 shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800'
               }`}
             >
               {chip.label}
@@ -183,13 +188,15 @@ export const PlanPage: React.FC<PlanPageProps> = ({
       {/* Row-Based Cards List */}
       <div className="space-y-3">
         {filteredPlans.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-slate-900/40 border border-dashed border-slate-800">
-            <Footprints className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-white">
-              Tidak Ada Data Sesi Lari yang Cocok
+          <div className="p-12 text-center rounded-3xl bg-white dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-800 shadow-xs">
+            <Footprints className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+              {language === 'id' ? 'Tidak Ada Data Sesi Lari yang Cocok' : 'No matching run sessions found'}
             </h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              Cobalah ubah filter pencarian atau buat jadwal/log aktivitas baru untuk hari ini.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+              {language === 'id' 
+                ? 'Cobalah ubah filter pencarian atau buat jadwal/log aktivitas baru untuk hari ini.'
+                : 'Try changing search filters or create a new schedule/activity log.'}
             </p>
           </div>
         ) : (
@@ -203,12 +210,12 @@ export const PlanPage: React.FC<PlanPageProps> = ({
               <div
                 key={plan.id}
                 id={`plan-row-card-${plan.id}`}
-                className={`p-5 rounded-3xl border transition-all hover:border-slate-700/80 ${
+                className={`p-5 rounded-3xl border transition-all hover:border-slate-300 dark:hover:border-slate-700/80 shadow-xs ${
                   isRestDay
-                    ? 'bg-slate-900/30 border-slate-800 italic text-slate-400'
+                    ? 'bg-slate-50/70 dark:bg-slate-900/30 border-slate-200 dark:border-slate-800 italic text-slate-500 dark:text-slate-400'
                     : isCompleted
-                    ? 'bg-slate-900/40 border-white/5 backdrop-blur-sm'
-                    : 'bg-slate-900/40 border-white/5 backdrop-blur-sm'
+                    ? 'bg-white dark:bg-slate-900/40 border-slate-200 dark:border-white/5 backdrop-blur-sm'
+                    : 'bg-white dark:bg-slate-900/40 border-slate-200 dark:border-white/5 backdrop-blur-sm'
                 }`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -217,13 +224,13 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                     {/* Date badge */}
                     <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center shrink-0 border ${
                       isRestDay
-                        ? 'bg-slate-800 border-slate-700 text-slate-400'
+                        ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                         : isCompleted
-                        ? 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
-                        : 'bg-slate-800/60 border-slate-700/60 text-slate-300'
+                        ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20 text-cyan-700 dark:text-cyan-400'
+                        : 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 text-slate-700 dark:text-slate-300'
                     }`}>
                       <span className="text-[10px] font-mono uppercase font-bold tracking-wider">
-                        {dateObj.toLocaleDateString('id-ID', { weekday: 'short' })}
+                        {dateObj.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { weekday: 'short' })}
                       </span>
                       <span className="text-lg font-bold leading-none mt-0.5">
                         {plan.date.split('-')[2]}
@@ -233,43 +240,43 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                     {/* Meta info */}
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="flex items-center space-x-1.5 text-sm font-bold text-white">
+                        <span className="flex items-center space-x-1.5 text-sm font-bold text-slate-900 dark:text-white">
                           {getRunTypeIcon(plan.type_run)}
                           <span>{plan.type_run}</span>
                         </span>
 
                         {/* Status Badge */}
                         {isCompleted ? (
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                             <CheckCircle2 className="w-3 h-3" />
-                            <span>Completed</span>
+                            <span>{t('completed_status')}</span>
                           </span>
                         ) : isRestDay ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                             Rest Recovery
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                            Planned
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                            {t('planned_pending')}
                           </span>
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                         {plan.time && (
                           <span className="flex items-center space-x-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             <span>{plan.time}</span>
                           </span>
                         )}
                         {plan.target_location && (
                           <span className="flex items-center space-x-1">
-                            <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                            <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                             <span>{plan.target_location}</span>
                           </span>
                         )}
                         {shoeName && (
-                          <span className="flex items-center space-x-1 text-cyan-400 font-medium">
+                          <span className="flex items-center space-x-1 text-cyan-600 dark:text-cyan-400 font-medium">
                             <Footprints className="w-3.5 h-3.5" />
                             <span>{shoeName}</span>
                           </span>
@@ -279,18 +286,18 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                   </div>
 
                   {/* Center block: Target vs Actual Numbers */}
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-2 sm:py-0 border-y sm:border-y-0 sm:border-x border-slate-800/80 px-0 sm:px-6">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 py-2 sm:py-0 border-y sm:border-y-0 sm:border-x border-slate-100 dark:border-slate-800/80 px-0 sm:px-6">
                     <div>
-                      <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">Target Dist</div>
-                      <div className="text-sm font-bold text-white mt-0.5">
+                      <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">{t('target_distance')}</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                         {isRestDay ? '0 km' : `${plan.target_distance} km`}
                       </div>
                     </div>
 
                     <div>
-                      <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">Aktual Dist</div>
+                      <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">{t('actual_distance')}</div>
                       <div className={`text-sm font-bold mt-0.5 ${
-                        isCompleted ? 'text-cyan-400' : 'text-slate-500'
+                        isCompleted ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'
                       }`}>
                         {isCompleted ? `${plan.actual_log?.actual_distance} km` : '-'}
                       </div>
@@ -298,7 +305,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
 
                     <div>
                       <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">Avg Pace</div>
-                      <div className="text-sm font-bold text-white mt-0.5">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
                         {isCompleted ? (plan.actual_log?.actual_avg_pace || '-') : (plan.target_avg_pace || '-')}
                       </div>
                     </div>
@@ -306,7 +313,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                     {isCompleted && plan.actual_log?.avg_heart_rate && (
                       <div className="hidden sm:block">
                         <div className="text-[10px] uppercase font-mono text-slate-500 tracking-wider">Heart Rate</div>
-                        <div className="text-sm font-bold text-rose-400 flex items-center space-x-1 mt-0.5">
+                        <div className="text-sm font-bold text-rose-500 dark:text-rose-400 flex items-center space-x-1 mt-0.5">
                           <Heart className="w-3 h-3 fill-current" />
                           <span>{plan.actual_log.avg_heart_rate} bpm</span>
                         </div>
@@ -320,7 +327,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                       <button
                         id={`row-log-actual-btn-${plan.id}`}
                         onClick={() => onLogActual(plan)}
-                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all"
+                        className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>Log Actual</span>
@@ -330,8 +337,8 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                     <button
                       id={`row-edit-plan-btn-${plan.id}`}
                       onClick={() => onEditPlan(plan)}
-                      title="Edit Sesi"
-                      className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition-colors"
+                      title={t('edit')}
+                      className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
@@ -340,8 +347,8 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                       id={`row-delete-plan-btn-${plan.id}`}
                       onClick={() => handleDelete(plan)}
                       disabled={deletingId === plan.id}
-                      title="Hapus"
-                      className="p-2 rounded-xl text-slate-500 hover:text-rose-400 hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+                      title={t('delete')}
+                      className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -350,26 +357,26 @@ export const PlanPage: React.FC<PlanPageProps> = ({
 
                 {/* Sub-description or Strategy details toggle */}
                 {(plan.description || plan.strategy_details || plan.actual_log?.actual_description) && (
-                  <div className="mt-3.5 pt-3.5 border-t border-slate-800/80 text-xs text-slate-400 space-y-1.5">
+                  <div className="mt-3.5 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500 dark:text-slate-400 space-y-1.5">
                     {plan.strategy_details && (
-                      <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-800/40 border border-slate-700/40 rounded-2xl text-[11px]">
+                      <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/40 rounded-2xl text-[11px]">
                         {plan.strategy_details.warm_up && (
-                          <span>🏃 <strong className="text-slate-200">Warm up:</strong> {plan.strategy_details.warm_up}</span>
+                          <span>🏃 <strong className="text-slate-800 dark:text-slate-200">Warm up:</strong> {plan.strategy_details.warm_up}</span>
                         )}
                         {plan.strategy_details.speed_session && (
-                          <span>⚡ <strong className="text-slate-200">Set:</strong> {plan.strategy_details.speed_session}</span>
+                          <span>⚡ <strong className="text-slate-800 dark:text-slate-200">Set:</strong> {plan.strategy_details.speed_session}</span>
                         )}
                         {plan.strategy_details.cooldown && (
-                          <span>🧘 <strong className="text-slate-200">Cooldown:</strong> {plan.strategy_details.cooldown}</span>
+                          <span>🧘 <strong className="text-slate-800 dark:text-slate-200">Cooldown:</strong> {plan.strategy_details.cooldown}</span>
                         )}
                       </div>
                     )}
                     {plan.description && !plan.actual_log?.actual_description && (
-                      <p className="line-clamp-1 italic text-slate-400">📌 {plan.description}</p>
+                      <p className="line-clamp-1 italic text-slate-500 dark:text-slate-400">📌 {plan.description}</p>
                     )}
                     {plan.actual_log?.actual_description && (
-                      <p className="text-slate-300 font-medium">
-                        💬 <strong className="text-cyan-400">Evaluasi:</strong> {plan.actual_log.actual_description}
+                      <p className="text-slate-700 dark:text-slate-300 font-medium">
+                        💬 <strong className="text-cyan-600 dark:text-cyan-400">{language === 'id' ? 'Evaluasi:' : 'Evaluation:'}</strong> {plan.actual_log.actual_description}
                       </p>
                     )}
                   </div>
@@ -382,3 +389,4 @@ export const PlanPage: React.FC<PlanPageProps> = ({
     </div>
   );
 };
+
