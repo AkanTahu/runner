@@ -14,6 +14,7 @@ import {
 import { Plan, ActualLog, RunType, Gear } from '../types';
 import { createPlan, updatePlan } from '../lib/planService';
 import { useAuth } from '../lib/authContext';
+import { PacePicker, DurationPicker } from './PaceDurationPicker';
 
 interface RunModalProps {
   isOpen: boolean;
@@ -462,16 +463,13 @@ export const RunModal: React.FC<RunModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      {language === 'id' ? 'Target Avg Pace (min/km)' : 'Target Avg Pace (min/km)'}
-                    </label>
-                    <input
-                      type="text"
+                    <PacePicker
                       id="plan-target-pace"
-                      placeholder="05:30"
+                      label={language === 'id' ? 'Target Avg Pace' : 'Target Avg Pace'}
                       value={targetPace}
-                      onChange={(e) => setTargetPace(e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                      onChange={(newPace) => setTargetPace(newPace)}
+                      language={language}
+                      align="right"
                     />
                   </div>
                 </div>
@@ -586,20 +584,15 @@ export const RunModal: React.FC<RunModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        {language === 'id' ? 'Durasi (hh:mm:ss) *' : 'Duration (hh:mm:ss) *'}
-                      </label>
-                      <input
-                        type="text"
+                      <DurationPicker
                         id="run-input-duration"
-                        placeholder="00:45:00"
-                        required
+                        label={language === 'id' ? 'Durasi (hh:mm:ss) *' : 'Duration (hh:mm:ss) *'}
                         value={actualDuration}
-                        onChange={(e) => {
-                          setActualDuration(e.target.value);
-                          calculatePaceFromDuration(parseFloat(actualDistance), e.target.value);
+                        onChange={(newDuration) => {
+                          setActualDuration(newDuration);
+                          calculatePaceFromDuration(parseFloat(actualDistance), newDuration);
                         }}
-                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+                        language={language}
                       />
                     </div>
                   </div>
@@ -607,20 +600,13 @@ export const RunModal: React.FC<RunModalProps> = ({
                   {/* Pace & Heart Rate Row */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        {language === 'id' ? 'Pace Rata-rata (min/km)' : 'Avg Pace (min/km)'}
-                      </label>
-                      <div className="relative">
-                        <Activity className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3" />
-                        <input
-                          type="text"
-                          id="actual-pace-input"
-                          placeholder="05:20"
-                          value={actualPace}
-                          onChange={(e) => setActualPace(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
-                        />
-                      </div>
+                      <PacePicker
+                        id="actual-pace-input"
+                        label={language === 'id' ? 'Pace Rata-rata' : 'Avg Pace'}
+                        value={actualPace}
+                        onChange={(newPace) => setActualPace(newPace)}
+                        language={language}
+                      />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
