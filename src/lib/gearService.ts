@@ -8,7 +8,8 @@ import {
   updateDoc, 
   deleteDoc, 
   increment,
-  writeBatch
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { Gear } from '../types';
@@ -95,10 +96,10 @@ export async function addGear(uid: string, gearData: Omit<Gear, 'id' | 'gear_id'
   }
 }
 
-export async function seedDefaultGearsIfEmpty(uid: string, currentGearsCount: number) {
-  if (currentGearsCount > 0) return;
+export async function seedDefaultGearsIfEmpty(uid: string, currentGearsCount: number = 0) {
   if (!auth.currentUser || !uid || uid.startsWith('guest_')) {
-    getLocalGears(uid || 'guest_runner');
+    const defaults = DEFAULT_LOCAL_GEARS.map(g => ({ ...g, uid: uid || 'guest_runner' }));
+    saveLocalGears(defaults);
     return;
   }
 
@@ -118,6 +119,26 @@ export async function seedDefaultGearsIfEmpty(uid: string, currentGearsCount: nu
     await batch.commit();
   } catch (error) {
     console.warn('Could not seed default gears to Firestore:', error);
+  }
+}
+
+export async function clearAllGears(uid: string): Promise<void> {
+  if (!auth.currentUser || !uid || uid.startsWith('guest_')) {
+    saveLocalGears([]);
+    return;
+  }
+
+  const path = GEARS_COLLECTION;
+  try {
+    const q = query(collection(db, path), where('uid', '==', uid));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 

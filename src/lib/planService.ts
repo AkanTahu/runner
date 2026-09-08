@@ -7,7 +7,8 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc,
-  writeBatch
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { Plan, ActualLog, RunType } from '../types';
@@ -194,12 +195,13 @@ export async function logActualRun(
   await updatePlan(planId, { actual_log: actualLog }, previousPlan);
 }
 
-// Seed realistic starter running schedule for this week and recent activities
+// Seed realistic starter running schedule for this week and recent activities (explicit trigger only)
 export async function seedDefaultPlansIfEmpty(uid: string, currentPlansCount: number, shoes: { id?: string; name: string }[]) {
-  if (currentPlansCount > 0) return;
-
   if (!auth.currentUser || !uid || uid.startsWith('guest_')) {
-    getLocalPlans(uid || 'guest_runner');
+    const shoeId1 = shoes[0]?.id || 'gear-default-1';
+    const shoeId2 = shoes[1]?.id || 'gear-default-2';
+    const samplePlans = getDefaultLocalPlans(uid || 'guest_runner', shoeId1, shoeId2);
+    saveLocalPlans(samplePlans);
     return;
   }
 
@@ -221,5 +223,25 @@ export async function seedDefaultPlansIfEmpty(uid: string, currentPlansCount: nu
     await batch.commit();
   } catch (error) {
     console.warn('Could not seed default plans to Firestore:', error);
+  }
+}
+
+export async function clearAllPlans(uid: string): Promise<void> {
+  if (!auth.currentUser || !uid || uid.startsWith('guest_')) {
+    saveLocalPlans([]);
+    return;
+  }
+
+  const path = PLANS_COLLECTION;
+  try {
+    const q = query(collection(db, path), where('uid', '==', uid));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    snapshot.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+    });
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }

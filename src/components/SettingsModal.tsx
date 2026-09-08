@@ -10,7 +10,9 @@ import {
   Play,
   Save,
   Check,
-  Globe
+  Globe,
+  Trash2,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { Language } from '../types';
@@ -19,14 +21,22 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onReopenSplash: () => void;
+  plansCount?: number;
+  gearsCount?: number;
+  onClearAllData?: () => Promise<void>;
+  onSeedDemoData?: () => Promise<void>;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  onReopenSplash
+  onReopenSplash,
+  plansCount = 0,
+  gearsCount = 0,
+  onClearAllData,
+  onSeedDemoData
 }) => {
-  const { userProfile, updateUserSettings, theme, setTheme, language, setLanguage, t } = useAuth();
+  const { user, userProfile, updateUserSettings, theme, setTheme, language, setLanguage, t } = useAuth();
 
   const [quote, setQuote] = useState<string>(
     userProfile?.settings.motivation_quote || 
@@ -43,6 +53,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   );
   const [saving, setSaving] = useState<boolean>(false);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [dataActionLoading, setDataActionLoading] = useState<boolean>(false);
+  const [dataActionMsg, setDataActionMsg] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleClearData = async () => {
+    const confirmText = language === 'id'
+      ? 'Hapus SEMUA data lari dan perlengkapan Anda? Data yang dihapus tidak dapat dikembalikan.'
+      : 'Delete ALL your runs and gear logs? This will clear all items from your account.';
+    if (!window.confirm(confirmText)) return;
+
+    setDataActionLoading(true);
+    try {
+      if (onClearAllData) {
+        await onClearAllData();
+      }
+      setDataActionMsg(language === 'id' ? 'Semua data berhasil dikosongkan!' : 'All data successfully cleared!');
+      setTimeout(() => setDataActionMsg(null), 3000);
+    } catch (err) {
+      console.error('Failed to clear data:', err);
+      alert(language === 'id' ? 'Gagal mengosongkan data.' : 'Failed to clear data.');
+    } finally {
+      setDataActionLoading(false);
+    }
+  };
+
+  const handleSeedDemo = async () => {
+    const confirmText = language === 'id'
+      ? 'Muat data demo lari dan sepatu contoh ke akun Anda?'
+      : 'Load starter demo running workouts and shoes to your account?';
+    if (!window.confirm(confirmText)) return;
+
+    setDataActionLoading(true);
+    try {
+      if (onSeedDemoData) {
+        await onSeedDemoData();
+      }
+      setDataActionMsg(language === 'id' ? 'Data demo berhasil dimuat!' : 'Demo data loaded successfully!');
+      setTimeout(() => setDataActionMsg(null), 3000);
+    } catch (err) {
+      console.error('Failed to seed demo data:', err);
+      alert(language === 'id' ? 'Gagal memuat data demo.' : 'Failed to load demo data.');
+    } finally {
+      setDataActionLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -254,6 +310,73 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div className="text-xs font-bold text-slate-900 dark:text-white">{t('theme_light_name')}</div>
                   <div className="text-[10px] text-slate-500">{t('theme_light_desc')}</div>
                 </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Data Management Section */}
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  {language === 'id' ? 'Manajemen Data & Cloud' : 'Data & Cloud Management'}
+                </label>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {user ? (
+                    language === 'id' 
+                      ? `Tersinkron dengan Cloud (${plansCount} lari, ${gearsCount} perlengkapan)`
+                      : `Synced to Cloud (${plansCount} runs, ${gearsCount} gears)`
+                  ) : (
+                    language === 'id' 
+                      ? `Penyimpanan Lokal (${plansCount} lari, ${gearsCount} perlengkapan)`
+                      : `Local Storage (${plansCount} runs, ${gearsCount} gears)`
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {dataActionMsg && (
+              <div className="mb-2.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center space-x-1.5">
+                <Check className="w-3.5 h-3.5 shrink-0" />
+                <span>{dataActionMsg}</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                id="clear-all-data-btn"
+                disabled={dataActionLoading || (plansCount === 0 && gearsCount === 0)}
+                onClick={handleClearData}
+                className="p-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-900/30 text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <div className="flex items-center space-x-2">
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-xs font-bold">
+                    {language === 'id' ? 'Kosongkan Data' : 'Clear All Data'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-red-500/80 dark:text-red-400/70 mt-0.5">
+                  {language === 'id' ? 'Hapus semua lari & gear' : 'Delete all runs & gear'}
+                </p>
+              </button>
+
+              <button
+                type="button"
+                id="load-demo-data-btn"
+                disabled={dataActionLoading}
+                onClick={handleSeedDemo}
+                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-all disabled:opacity-40 cursor-pointer"
+              >
+                <div className="flex items-center space-x-2">
+                  <Database className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                  <span className="text-xs font-bold">
+                    {language === 'id' ? 'Muat Data Demo' : 'Load Demo Data'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {language === 'id' ? 'Tambahkan contoh data' : 'Add sample starter data'}
+                </p>
               </button>
             </div>
           </div>

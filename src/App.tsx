@@ -9,8 +9,8 @@ import { GearPage } from './components/GearPage';
 import { RunModal } from './components/RunModal';
 import { SettingsModal } from './components/SettingsModal';
 import { Plan, Gear } from './types';
-import { subscribePlans, seedDefaultPlansIfEmpty } from './lib/planService';
-import { subscribeGears, seedDefaultGearsIfEmpty } from './lib/gearService';
+import { subscribePlans, clearAllPlans, seedDefaultPlansIfEmpty } from './lib/planService';
+import { subscribeGears, clearAllGears, seedDefaultGearsIfEmpty } from './lib/gearService';
 import { Loader2, Footprints } from 'lucide-react';
 
 const MainApp: React.FC = () => {
@@ -46,16 +46,10 @@ const MainApp: React.FC = () => {
       if (user) {
         unsubGears = subscribeGears(user.uid, (gearItems) => {
           setGears(gearItems);
-          if (gearItems.length === 0) {
-            seedDefaultGearsIfEmpty(user.uid, 0);
-          }
         });
 
         unsubPlans = subscribePlans(user.uid, (planItems) => {
           setPlans(planItems);
-          if (planItems.length === 0) {
-            seedDefaultPlansIfEmpty(user.uid, 0, gears);
-          }
           setDataLoading(false);
         });
       } else {
@@ -252,6 +246,16 @@ const MainApp: React.FC = () => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         onReopenSplash={() => setShowSplash(true)}
+        plansCount={plans.length}
+        gearsCount={gears.length}
+        onClearAllData={async () => {
+          await clearAllPlans(effectiveUid);
+          await clearAllGears(effectiveUid);
+        }}
+        onSeedDemoData={async () => {
+          await seedDefaultGearsIfEmpty(effectiveUid, 0);
+          await seedDefaultPlansIfEmpty(effectiveUid, 0, gears);
+        }}
       />
     </div>
   );

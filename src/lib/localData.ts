@@ -207,9 +207,9 @@ export function getDefaultLocalPlans(uid: string, shoeId1: string = 'gear-defaul
 export function getLocalGears(uid: string = 'guest_runner'): Gear[] {
   try {
     const raw = localStorage.getItem(LOCAL_GEARS_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw) as Gear[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -233,9 +233,9 @@ export function saveLocalGears(gears: Gear[]): void {
 export function getLocalPlans(uid: string = 'guest_runner', shoes?: Gear[]): Plan[] {
   try {
     const raw = localStorage.getItem(LOCAL_PLANS_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw) as Plan[];
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
