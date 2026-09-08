@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowRight, ChevronRight, Activity, Sparkles } from 'lucide-react';
+import { ArrowRight, ChevronRight, Activity, RotateCw } from 'lucide-react';
 import { Plan } from '../types';
 import { useAuth } from '../lib/authContext';
+import { fetchRandomQuote, getRandomCuratedQuote, QuoteItem } from '../lib/quotes';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -12,11 +13,45 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  motivationQuote = "It never gets easier, you just go faster. Every mile is a step towards greatness.",
+  motivationQuote,
   plans
 }) => {
   const { t, language } = useAuth();
   const [currentSlide, setCurrentSlide] = useState<number>(1);
+  const [quoteData, setQuoteData] = useState<QuoteItem>(() => {
+    // If a custom non-default user quote is specified, use it as initial, else pick random
+    if (motivationQuote && motivationQuote !== "It never gets easier, you just go faster. Every mile is a step towards greatness.") {
+      return {
+        quote: motivationQuote,
+        author: "Runner Motto"
+      };
+    }
+    return getRandomCuratedQuote();
+  });
+  const [isRotatingQuote, setIsRotatingQuote] = useState<boolean>(false);
+
+  const loadNextQuote = async () => {
+    setIsRotatingQuote(true);
+    try {
+      const next = await fetchRandomQuote();
+      setQuoteData(next);
+    } finally {
+      setIsRotatingQuote(false);
+    }
+  };
+
+  useEffect(() => {
+    // Each time splash screen opens, fetch a fresh dynamic quote
+    let isMounted = true;
+    fetchRandomQuote().then((quote) => {
+      if (isMounted) {
+        setQuoteData(quote);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Calculate quick summary for this week
   const today = new Date();
@@ -76,18 +111,30 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               transition={{ duration: 0.4 }}
               className="text-center space-y-6"
             >
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs tracking-wider uppercase font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{language === 'id' ? 'Motivasi Lari Harian' : 'Daily Running Motivation'}</span>
-              </div>
-
               <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-white uppercase leading-none">
                 RUNNERS<span className="text-cyan-400">.</span>
               </h1>
 
-              <p className="text-lg sm:text-2xl text-slate-300 font-light leading-relaxed max-w-2xl mx-auto italic">
-                "{motivationQuote}"
-              </p>
+              <div className="space-y-3 max-w-2xl mx-auto px-2">
+                <p className="text-lg sm:text-2xl text-slate-200 font-light leading-relaxed italic">
+                  "{quoteData.quote}"
+                </p>
+
+                <div className="flex items-center justify-center space-x-2.5 text-xs font-mono tracking-widest uppercase text-cyan-400/90">
+                  <span>— {quoteData.author}</span>
+                  <button
+                    id="shuffle-quote-btn"
+                    type="button"
+                    onClick={loadNextQuote}
+                    disabled={isRotatingQuote}
+                    title={language === 'id' ? 'Ganti quote motivasi' : 'Shuffle quote'}
+                    aria-label="Shuffle quote"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800/80 transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center"
+                  >
+                    <RotateCw className={`w-3.5 h-3.5 ${isRotatingQuote ? 'animate-spin text-cyan-400' : ''}`} />
+                  </button>
+                </div>
+              </div>
 
               <div className="text-xs tracking-widest text-slate-500 uppercase font-mono">
                 {language === 'id' ? 'Pencatatan Konsistensi & Performa Lari Pribadi' : 'Personal Running Consistency & Performance Tracker'}

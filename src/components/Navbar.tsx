@@ -5,7 +5,6 @@ import {
   BarChart3, 
   Sun, 
   Moon, 
-  Plus, 
   Settings as SettingsIcon, 
   LogOut, 
   LogIn,
@@ -133,11 +132,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="top-log-run-btn"
               onClick={onOpenRunModal}
-              className="flex items-center space-x-1.5 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 shadow-md shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer"
+              className="flex items-center justify-center px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 shadow-md shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
             >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span className="hidden sm:inline">{t('quick_log')}</span>
-              <span className="sm:hidden">{t('quick_log')}</span>
+              <span>{t('quick_log')}</span>
             </button>
 
             {/* Theme Toggle Button */}

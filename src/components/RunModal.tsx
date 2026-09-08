@@ -557,7 +557,7 @@ export const RunModal: React.FC<RunModalProps> = ({
                   className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
                 />
                 <label htmlFor="actual-isrun-checkbox" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 cursor-pointer">
-                  {language === 'id' ? 'Aktivitas berhasil dilaksanakan (isRun: True)' : 'Run completed successfully (isRun: True)'}
+                  {language === 'id' ? 'Lari Selesai' : 'Run Completed'}
                 </label>
               </div>
 
