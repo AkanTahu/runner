@@ -14,6 +14,7 @@ import {
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { Gear } from '../types';
 import { getLocalGears, saveLocalGears, DEFAULT_LOCAL_GEARS } from './localData';
+import { removeUndefinedFields } from './cleanData';
 
 const GEARS_COLLECTION = 'gears';
 
@@ -83,13 +84,14 @@ export async function addGear(uid: string, gearData: Omit<Gear, 'id' | 'gear_id'
 
   const path = GEARS_COLLECTION;
   try {
-    const docRef = await addDoc(collection(db, path), {
+    const dataToSave = removeUndefinedFields({
       ...gearData,
       uid,
       total_distance: Number(gearData.total_distance) || 0,
       is_active: gearData.is_active ?? true,
       createdAt: new Date().toISOString()
     });
+    const docRef = await addDoc(collection(db, path), dataToSave);
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
@@ -155,7 +157,8 @@ export async function updateGear(gearId: string, updates: Partial<Gear>): Promis
 
   const path = `${GEARS_COLLECTION}/${gearId}`;
   try {
-    await updateDoc(doc(db, GEARS_COLLECTION, gearId), updates);
+    const dataToUpdate = removeUndefinedFields(updates);
+    await updateDoc(doc(db, GEARS_COLLECTION, gearId), dataToUpdate);
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, path);
   }

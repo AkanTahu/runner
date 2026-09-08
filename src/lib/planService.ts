@@ -14,6 +14,7 @@ import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { Plan, ActualLog, RunType } from '../types';
 import { updateShoeMileage } from './gearService';
 import { getLocalPlans, saveLocalPlans, getDefaultLocalPlans } from './localData';
+import { removeUndefinedFields } from './cleanData';
 
 const PLANS_COLLECTION = 'plans';
 
@@ -86,12 +87,13 @@ export async function createPlan(uid: string, planData: Omit<Plan, 'id' | 'plan_
 
   const path = PLANS_COLLECTION;
   try {
-    const docRef = await addDoc(collection(db, path), {
+    const dataToSave = removeUndefinedFields({
       ...planData,
       uid,
       target_distance: Number(planData.target_distance) || 0,
       createdAt: new Date().toISOString()
     });
+    const docRef = await addDoc(collection(db, path), dataToSave);
 
     // If actual_log was submitted right upon creation (e.g. direct run tracking)
     if (planData.actual_log?.is_run && planData.actual_log.actual_distance > 0) {
@@ -139,10 +141,11 @@ export async function updatePlan(
 
   const path = `${PLANS_COLLECTION}/${planId}`;
   try {
-    await updateDoc(doc(db, PLANS_COLLECTION, planId), {
+    const dataToUpdate = removeUndefinedFields({
       ...updates,
       updatedAt: new Date().toISOString()
     });
+    await updateDoc(doc(db, PLANS_COLLECTION, planId), dataToUpdate);
 
     if (updates.actual_log !== undefined) {
       await updateShoeMileage(oldShoeId, oldDist, newShoeId, newDist);
