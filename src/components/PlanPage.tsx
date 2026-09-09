@@ -17,7 +17,9 @@ import {
   CalendarRange,
   ListFilter,
   Layers,
-  Sparkles
+  Sparkles,
+  Check,
+  Loader2
 } from 'lucide-react';
 import { Plan, RunType, Gear } from '../types';
 import { deletePlan } from '../lib/planService';
@@ -44,6 +46,8 @@ export const PlanPage: React.FC<PlanPageProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hoveredDeleteId, setHoveredDeleteId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   // Week display modes
   const [groupByWeek, setGroupByWeek] = useState<boolean>(true);
@@ -207,19 +211,15 @@ export const PlanPage: React.FC<PlanPageProps> = ({
     return result.sort((a, b) => b.weekKey.localeCompare(a.weekKey));
   }, [filteredPlans, todayMondayISO, language]);
 
-  const handleDelete = async (plan: Plan) => {
+  const executeDelete = async (plan: Plan) => {
     if (!plan.id) return;
-    const confirmMsg = language === 'id' 
-      ? `Hapus jadwal/log lari tanggal ${plan.date}?` 
-      : `Delete run schedule/log for ${plan.date}?`;
-    if (!window.confirm(confirmMsg)) return;
-
     setDeletingId(plan.id);
     try {
       await deletePlan(plan.id, plan);
+      setHoveredDeleteId(null);
+      setConfirmingDeleteId(null);
     } catch (err) {
       console.error('Failed to delete plan:', err);
-      alert('Failed to delete plan.');
     } finally {
       setDeletingId(null);
     }
@@ -414,15 +414,57 @@ export const PlanPage: React.FC<PlanPageProps> = ({
               <Edit3 className="w-4 h-4" />
             </button>
 
-            <button
-              id={`row-delete-plan-btn-${plan.id}`}
-              onClick={() => handleDelete(plan)}
-              disabled={deletingId === plan.id}
-              title={t('delete')}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors disabled:opacity-50 cursor-pointer"
+            {/* Delete button with minimalist hover confirmation checkmark popup */}
+            <div 
+              className="relative flex items-center"
+              onMouseEnter={() => setHoveredDeleteId(plan.id)}
+              onMouseLeave={() => setHoveredDeleteId(null)}
             >
-              <Trash2 className="w-4 h-4" />
-            </button>
+              <button
+                id={`row-delete-plan-btn-${plan.id}`}
+                onClick={() => setConfirmingDeleteId(prev => prev === plan.id ? null : plan.id)}
+                disabled={deletingId === plan.id}
+                title={t('delete')}
+                className={`p-2 rounded-xl transition-all cursor-pointer ${
+                  hoveredDeleteId === plan.id || confirmingDeleteId === plan.id
+                    ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 scale-105'
+                    : 'text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                } disabled:opacity-50`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              {/* Ultra-minimalist transparent outline red checkmark confirmation popup */}
+              {(hoveredDeleteId === plan.id || confirmingDeleteId === plan.id) && (
+                <div
+                  id={`delete-confirm-popup-${plan.id}`}
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 pb-1.5 z-40"
+                  onMouseEnter={() => setHoveredDeleteId(plan.id)}
+                  onMouseLeave={() => setHoveredDeleteId(null)}
+                >
+                  <button
+                    id={`confirm-delete-check-btn-${plan.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      executeDelete(plan);
+                    }}
+                    disabled={deletingId === plan.id}
+                    aria-label="Confirm delete"
+                    title={language === 'id' ? 'Klik untuk hapus' : 'Click to delete'}
+                    className="group/del relative w-7 h-7 rounded-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-rose-500 text-rose-500 hover:bg-rose-500 hover:text-white dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-500 dark:hover:text-white shadow-sm shadow-rose-500/10 flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer animate-in fade-in zoom-in-95"
+                  >
+                    {deletingId === plan.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500 group-hover/del:text-white" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                    )}
+
+                    {/* Small caret pointing down */}
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rotate-45 bg-white dark:bg-slate-900 border-r border-b border-rose-500 dark:border-rose-500 group-hover/del:bg-rose-500 transition-colors" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
