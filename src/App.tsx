@@ -31,6 +31,8 @@ const MainApp: React.FC = () => {
   const [isRunModalOpen, setIsRunModalOpen] = useState<boolean>(false);
   const [runModalMode, setRunModalMode] = useState<'quick_log' | 'plan' | 'actual'>('quick_log');
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<Plan | null>(null);
+  const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
+  const [modalDefaultSessionLabel, setModalDefaultSessionLabel] = useState<string | undefined>(undefined);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
 
   const effectiveUid = user?.uid || 'guest_runner_personal';
@@ -79,26 +81,34 @@ const MainApp: React.FC = () => {
     setShowSplash(false);
   };
 
-  const handleOpenQuickLog = () => {
+  const handleOpenQuickLog = (defaultDate?: string, defaultSessionLabel?: string) => {
     setSelectedPlanForModal(null);
+    setModalDefaultDate(defaultDate);
+    setModalDefaultSessionLabel(defaultSessionLabel);
     setRunModalMode('quick_log');
     setIsRunModalOpen(true);
   };
 
-  const handleOpenCreatePlan = () => {
+  const handleOpenCreatePlan = (defaultDate?: string, defaultSessionLabel?: string) => {
     setSelectedPlanForModal(null);
+    setModalDefaultDate(defaultDate);
+    setModalDefaultSessionLabel(defaultSessionLabel);
     setRunModalMode('plan');
     setIsRunModalOpen(true);
   };
 
   const handleEditPlan = (plan: Plan) => {
     setSelectedPlanForModal(plan);
+    setModalDefaultDate(plan.date);
+    setModalDefaultSessionLabel(plan.session_label);
     setRunModalMode('plan');
     setIsRunModalOpen(true);
   };
 
   const handleLogActual = (plan: Plan) => {
     setSelectedPlanForModal(plan);
+    setModalDefaultDate(plan.date);
+    setModalDefaultSessionLabel(plan.session_label);
     setRunModalMode('actual');
     setIsRunModalOpen(true);
   };
@@ -235,11 +245,15 @@ const MainApp: React.FC = () => {
         onClose={() => {
           setIsRunModalOpen(false);
           setSelectedPlanForModal(null);
+          setModalDefaultDate(undefined);
+          setModalDefaultSessionLabel(undefined);
         }}
         uid={effectiveUid}
         gears={gears}
         existingPlan={selectedPlanForModal}
         initialMode={runModalMode}
+        defaultDate={modalDefaultDate}
+        defaultSessionLabel={modalDefaultSessionLabel}
       />
 
       <SettingsModal

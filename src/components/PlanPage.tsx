@@ -26,8 +26,8 @@ import { useAuth } from '../lib/authContext';
 interface PlanPageProps {
   plans: Plan[];
   gears: Gear[];
-  onOpenCreatePlan: () => void;
-  onOpenQuickRunModal: () => void;
+  onOpenCreatePlan: (defaultDate?: string, defaultSessionLabel?: string) => void;
+  onOpenQuickRunModal: (defaultDate?: string, defaultSessionLabel?: string) => void;
   onEditPlan: (plan: Plan) => void;
   onLogActual: (plan: Plan) => void;
 }
@@ -191,7 +191,10 @@ export const PlanPage: React.FC<PlanPageProps> = ({
         weekKey: monISO,
         label,
         isThisWeek,
-        plans: weekPlans.sort((a, b) => a.date.localeCompare(b.date)),
+        plans: weekPlans.sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '00:00').localeCompare(b.time || '00:00');
+        }),
         totalActualDist,
         totalTargetDist,
         completedCount: completedRuns.length,
@@ -292,6 +295,13 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                   <span>{plan.type_run}</span>
                 </span>
 
+                {/* Session Label Badge (e.g. Sesi Pagi, Sesi 1, Sesi Sore) */}
+                {plan.session_label && (
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30 shadow-2xs">
+                    {plan.session_label}
+                  </span>
+                )}
+
                 {/* Status Badge */}
                 {isCompleted ? (
                   <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -380,6 +390,20 @@ export const PlanPage: React.FC<PlanPageProps> = ({
                 <span>Log Actual</span>
               </button>
             )}
+
+            <button
+              id={`row-add-session-btn-${plan.id}`}
+              onClick={() => {
+                const countOnDate = plans.filter(p => p.date === plan.date).length;
+                const nextLabel = language === 'id' ? `Sesi ${countOnDate + 1}` : `Session ${countOnDate + 1}`;
+                onOpenCreatePlan(plan.date, nextLabel);
+              }}
+              title={t('add_another_session')}
+              className="p-2 rounded-xl text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors cursor-pointer flex items-center space-x-1"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-[11px] font-bold hidden xl:inline">{language === 'id' ? '+ Sesi' : '+ Session'}</span>
+            </button>
 
             <button
               id={`row-edit-plan-btn-${plan.id}`}

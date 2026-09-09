@@ -23,6 +23,9 @@ interface RunModalProps {
   gears: Gear[];
   existingPlan?: Plan | null;
   initialMode?: 'quick_log' | 'plan' | 'actual';
+  defaultDate?: string;
+  defaultTime?: string;
+  defaultSessionLabel?: string;
 }
 
 const RUN_TYPES: RunType[] = ['Recovery', 'Easy', 'Tempo', 'Interval', 'Long Run', 'Rest Day'];
@@ -33,7 +36,10 @@ export const RunModal: React.FC<RunModalProps> = ({
   uid,
   gears,
   existingPlan,
-  initialMode = 'quick_log'
+  initialMode = 'quick_log',
+  defaultDate,
+  defaultTime,
+  defaultSessionLabel
 }) => {
   const { t, language } = useAuth();
   const [activeTab, setActiveTab] = useState<'quick_log' | 'plan' | 'actual'>(initialMode);
@@ -41,8 +47,9 @@ export const RunModal: React.FC<RunModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Common fields
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState<string>('06:00');
+  const [date, setDate] = useState<string>(defaultDate || new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState<string>(defaultTime || '06:00');
+  const [sessionLabel, setSessionLabel] = useState<string>(defaultSessionLabel || '');
   const [typeRun, setTypeRun] = useState<RunType>('Easy');
   const [location, setLocation] = useState<string>('Gelora Bung Karno');
   const [notes, setNotes] = useState<string>('');
@@ -77,6 +84,7 @@ export const RunModal: React.FC<RunModalProps> = ({
     if (existingPlan) {
       setDate(existingPlan.date);
       setTime(existingPlan.time || '06:00');
+      setSessionLabel(existingPlan.session_label || '');
       setTypeRun(existingPlan.type_run);
       setLocation(existingPlan.target_location || '');
       setTargetDistance(existingPlan.target_distance.toString());
@@ -108,8 +116,9 @@ export const RunModal: React.FC<RunModalProps> = ({
       }
     } else {
       // Reset form
-      setDate(new Date().toISOString().split('T')[0]);
-      setTime('06:00');
+      setDate(defaultDate || new Date().toISOString().split('T')[0]);
+      setTime(defaultTime || '06:00');
+      setSessionLabel(defaultSessionLabel || '');
       setTypeRun('Easy');
       setLocation('Gelora Bung Karno Outer Ring');
       setTargetDistance('5.0');
@@ -126,7 +135,7 @@ export const RunModal: React.FC<RunModalProps> = ({
       setIsRun(true);
       setActiveTab(initialMode);
     }
-  }, [existingPlan, isOpen, initialMode]);
+  }, [existingPlan, isOpen, initialMode, defaultDate, defaultTime, defaultSessionLabel]);
 
   // Auto calculate pace helper
   const calculatePaceFromDuration = (distKm: number, durationStr: string) => {
@@ -182,10 +191,13 @@ export const RunModal: React.FC<RunModalProps> = ({
           logged_at: new Date().toISOString()
         };
 
+        const trimmedLabel = sessionLabel ? sessionLabel.trim() : undefined;
+
         if (existingPlan?.id) {
           await updatePlan(existingPlan.id, {
             date,
             time,
+            session_label: trimmedLabel,
             type_run: typeRun,
             target_distance: parsedActualDistance,
             target_avg_pace: actualPace,
@@ -197,6 +209,7 @@ export const RunModal: React.FC<RunModalProps> = ({
           await createPlan(uid, {
             date,
             time,
+            session_label: trimmedLabel,
             type_run: typeRun,
             target_distance: parsedActualDistance,
             target_avg_pace: actualPace,
@@ -206,10 +219,12 @@ export const RunModal: React.FC<RunModalProps> = ({
           });
         }
       } else if (activeTab === 'plan') {
+        const trimmedLabel = sessionLabel ? sessionLabel.trim() : undefined;
         if (existingPlan?.id) {
           await updatePlan(existingPlan.id, {
             date,
             time,
+            session_label: trimmedLabel,
             type_run: typeRun,
             target_distance: parsedTargetDistance,
             target_avg_pace: effectiveTargetPace,
@@ -221,6 +236,7 @@ export const RunModal: React.FC<RunModalProps> = ({
           await createPlan(uid, {
             date,
             time,
+            session_label: trimmedLabel,
             type_run: typeRun,
             target_distance: parsedTargetDistance,
             target_avg_pace: effectiveTargetPace,
@@ -232,6 +248,7 @@ export const RunModal: React.FC<RunModalProps> = ({
         }
       } else if (activeTab === 'actual') {
         const parsedActualDistance = isRun ? (parseFloat(actualDistance) || 0) : 0;
+        const trimmedLabel = sessionLabel ? sessionLabel.trim() : undefined;
         const actual_log: ActualLog = {
           is_run: isRun,
           actual_type_run: typeRun,
@@ -247,12 +264,16 @@ export const RunModal: React.FC<RunModalProps> = ({
 
         if (existingPlan?.id) {
           await updatePlan(existingPlan.id, {
+            date,
+            time,
+            session_label: trimmedLabel,
             actual_log
           }, existingPlan);
         } else {
           await createPlan(uid, {
             date,
             time,
+            session_label: trimmedLabel,
             type_run: typeRun,
             target_distance: parsedActualDistance,
             target_avg_pace: actualPace,
@@ -385,6 +406,62 @@ export const RunModal: React.FC<RunModalProps> = ({
                 />
               </div>
             </div>
+          </div>
+
+          {/* Session Label & Multi-session helper */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                {t('session_label_input')}
+              </label>
+              <span className="text-[10px] text-slate-400 font-mono">
+                {language === 'id' ? 'Multi-sesi harian' : 'Multi-session daily'}
+              </span>
+            </div>
+
+            {/* Quick chips to fill session name & suggested time */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { label: t('morning_preset'), name: language === 'id' ? 'Sesi Pagi' : 'Morning Session', presetTime: '06:00' },
+                { label: t('afternoon_preset'), name: language === 'id' ? 'Sesi Siang' : 'Afternoon Session', presetTime: '12:00' },
+                { label: t('evening_preset'), name: language === 'id' ? 'Sesi Sore' : 'Evening Session', presetTime: '16:30' },
+                { label: t('night_preset'), name: language === 'id' ? 'Sesi Malam' : 'Night Session', presetTime: '19:30' },
+                { label: t('session_preset_1'), name: language === 'id' ? 'Sesi 1' : 'Session 1', presetTime: '06:00' },
+                { label: t('session_preset_2'), name: language === 'id' ? 'Sesi 2' : 'Session 2', presetTime: '17:00' },
+              ].map(preset => {
+                const isSelected = sessionLabel === preset.name;
+                return (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSessionLabel('');
+                      } else {
+                        setSessionLabel(preset.name);
+                        setTime(preset.presetTime);
+                      }
+                    }}
+                    className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-cyan-500 text-slate-950 border-cyan-500 font-bold shadow-xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <input
+              type="text"
+              id="run-input-session-label"
+              value={sessionLabel}
+              onChange={(e) => setSessionLabel(e.target.value)}
+              placeholder={t('session_label_hint')}
+              className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all"
+            />
           </div>
 
           {/* Run Type selector */}

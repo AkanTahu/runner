@@ -37,6 +37,7 @@ export interface Plan {
   uid: string;
   date: string; // YYYY-MM-DD
   time?: string; // HH:mm
+  session_label?: string; // e.g. "Sesi 1 (Pagi)", "Sesi 2 (Sore)", etc.
   type_run: RunType;
   target_distance: number; // in Km, 0 for Rest Day
   target_avg_pace: string; // e.g. "05:30"

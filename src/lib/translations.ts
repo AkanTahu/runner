@@ -111,6 +111,25 @@ export const translations = {
     week_summary: 'Weekly Summary',
     week_target: 'Week Target',
 
+    // Multi-session keys
+    add_another_session: 'Add Another Session',
+    add_session_for_day: 'Add Session For This Day',
+    session_label_input: 'Session Name / Label (Optional)',
+    session_label_hint: 'e.g. Morning Easy, Evening Intervals, Session 2',
+    morning_preset: 'Morning 🌅',
+    afternoon_preset: 'Afternoon ☀️',
+    evening_preset: 'Evening 🌇',
+    night_preset: 'Night 🌙',
+    session_preset_1: 'Session 1',
+    session_preset_2: 'Session 2',
+    multiple_sessions_today: 'Multiple Sessions Today',
+    today_sessions_count: 'Training Sessions Today',
+    total_today_distance: 'Total Today',
+    completed_sessions_today: 'Completed Today',
+    all_sessions_done: 'All sessions completed',
+    sessions_unit: 'sessions',
+    session_item: 'Session',
+
     // Plan Page
     plans_header: 'Running Schedule & Planner',
     plans_subtitle: 'Plan workouts, set target pace, and log your running achievements',
@@ -341,6 +360,25 @@ export const translations = {
     next_week: 'Minggu Depan',
     week_summary: 'Ringkasan Minggu',
     week_target: 'Target Minggu',
+
+    // Multi-session keys
+    add_another_session: 'Tambah Sesi Lain',
+    add_session_for_day: 'Tambah Sesi di Tanggal Ini',
+    session_label_input: 'Nama / Label Sesi (Opsional)',
+    session_label_hint: 'Contoh: Lari Pagi, Interval Sore, Sesi 2',
+    morning_preset: 'Pagi 🌅',
+    afternoon_preset: 'Siang ☀️',
+    evening_preset: 'Sore 🌇',
+    night_preset: 'Malam 🌙',
+    session_preset_1: 'Sesi 1',
+    session_preset_2: 'Sesi 2',
+    multiple_sessions_today: 'Lebih dari Satu Sesi Hari Ini',
+    today_sessions_count: 'Sesi Latihan Hari Ini',
+    total_today_distance: 'Total Hari Ini',
+    completed_sessions_today: 'Selesai Hari Ini',
+    all_sessions_done: 'Semua sesi selesai',
+    sessions_unit: 'sesi',
+    session_item: 'Sesi',
 
     // Plan Page
     plans_header: 'Jadwal & Rencana Lari',

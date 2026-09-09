@@ -147,7 +147,12 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     });
   }, [monthlyCompletedRuns, gears]);
 
-  // Generate days for Monthly Calendar Grid
+  // Unique Active Days in this month (days where at least 1 run was completed)
+  const uniqueActiveDays = useMemo(() => {
+    return new Set(monthlyCompletedRuns.map(p => p.date)).size;
+  }, [monthlyCompletedRuns]);
+
+  // Generate days for Monthly Calendar Grid (supports multiple sessions per day)
   const calendarDays = useMemo(() => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const firstDayOfMonth = new Date(year, month - 1, 1);
@@ -158,8 +163,12 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     let startDayIndex = firstDayOfMonth.getDay() - 1;
     if (startDayIndex < 0) startDayIndex = 6; // Sunday becomes index 6
 
-    const planMap = new Map<string, Plan>();
-    monthlyPlans.forEach(p => planMap.set(p.date, p));
+    const planMap = new Map<string, Plan[]>();
+    monthlyPlans.forEach(p => {
+      const arr = planMap.get(p.date) || [];
+      arr.push(p);
+      planMap.set(p.date, arr);
+    });
 
     const cells = [];
     
@@ -168,7 +177,7 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
       cells.push({
         dayNumber: null,
         dateStr: '',
-        plan: null,
+        dayPlans: [] as Plan[],
         isPadding: true
       });
     }
@@ -176,11 +185,14 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
     // Days of current month
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = `${selectedMonth}-${String(day).padStart(2, '0')}`;
-      const plan = planMap.get(dateStr) || null;
+      const dayPlans = planMap.get(dateStr) || [];
+      // Sort sessions by time
+      dayPlans.sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));
+
       cells.push({
         dayNumber: day,
         dateStr,
-        plan,
+        dayPlans,
         isPadding: false
       });
     }
@@ -382,7 +394,7 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
           <div>
             <div className="text-[10px] uppercase font-mono text-slate-500">{t('active_days')}</div>
             <div className="text-sm font-bold text-slate-900 dark:text-white">
-              {monthlyCompletedRuns.length} {language === 'id' ? 'Hari' : 'Days'}
+              {uniqueActiveDays} {language === 'id' ? 'Hari' : 'Days'}
             </div>
           </div>
         </div>
@@ -451,11 +463,28 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
               );
             }
 
-            const plan = cell.plan;
-            const isCompleted = plan?.actual_log?.is_run;
-            const isRest = plan?.type_run === 'Rest Day';
-            const hasPlanPending = plan && !isCompleted && !isRest;
+            const dayPlans = cell.dayPlans || [];
+            const completedPlans = dayPlans.filter(p => p.actual_log?.is_run);
+            const isCompleted = completedPlans.length > 0;
+            const isRest = dayPlans.length > 0 && dayPlans.every(p => p.type_run === 'Rest Day');
+            const hasPlanPending = dayPlans.length > 0 && !isCompleted && !isRest;
             const isCellToday = cell.dateStr === today.toISOString().split('T')[0];
+            const sessionCount = dayPlans.length;
+
+            const totalActualDist = completedPlans.reduce((sum, p) => sum + (p.actual_log?.actual_distance || 0), 0);
+            const totalTargetDist = dayPlans.reduce((sum, p) => sum + (p.type_run !== 'Rest Day' ? p.target_distance : 0), 0);
+
+            // Detailed tooltip string
+            const tooltipTitle = sessionCount > 0
+              ? `${cell.dateStr}:\n` + dayPlans.map(p => {
+                  const labelPrefix = p.session_label ? `[${p.session_label}] ` : '';
+                  const timePrefix = p.time ? `${p.time} - ` : '';
+                  const status = p.actual_log?.is_run 
+                    ? `Done: ${p.actual_log.actual_distance} km (${p.actual_log.actual_avg_pace || '-'})`
+                    : `Plan: ${p.target_distance} km`;
+                  return `• ${labelPrefix}${timePrefix}${p.type_run} -> ${status}`;
+                }).join('\n')
+              : `${cell.dateStr}: ${language === 'id' ? 'Tidak ada lari' : 'No run'}`;
 
             return (
               <div
@@ -471,11 +500,7 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
                     ? 'bg-blue-50/50 dark:bg-blue-950/30 border-dashed border-cyan-400/70 dark:border-cyan-600/70'
                     : 'bg-white dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/60'
                 }`}
-                title={
-                  plan 
-                    ? `${cell.dateStr}: ${plan.type_run} ${isCompleted ? `(${plan.actual_log?.actual_distance} km)` : ''}`
-                    : `${cell.dateStr}: No run`
-                }
+                title={tooltipTitle}
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-[11px] font-mono font-bold ${
@@ -483,19 +508,27 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
                   }`}>
                     {cell.dayNumber}
                   </span>
-                  {isCompleted && (
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                  )}
+                  
+                  <div className="flex items-center space-x-1">
+                    {sessionCount > 1 && (
+                      <span className="text-[9px] font-bold px-1 rounded bg-cyan-500/20 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30">
+                        {sessionCount}x
+                      </span>
+                    )}
+                    {isCompleted && (
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-1">
                   {isCompleted ? (
                     <div>
                       <div className="text-xs font-bold text-cyan-700 dark:text-cyan-300">
-                        {plan.actual_log?.actual_distance}k
+                        {Math.round(totalActualDist * 10) / 10}k
                       </div>
                       <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 truncate">
-                        {plan.type_run}
+                        {sessionCount > 1 ? `${sessionCount} ${language === 'id' ? 'Sesi' : 'Runs'}` : dayPlans[0]?.type_run}
                       </div>
                     </div>
                   ) : isRest ? (
@@ -505,10 +538,10 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
                   ) : hasPlanPending ? (
                     <div>
                       <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {plan.target_distance}k
+                        {Math.round(totalTargetDist * 10) / 10}k
                       </div>
                       <div className="text-[9px] font-mono text-slate-400 truncate">
-                        Plan
+                        {sessionCount > 1 ? `${sessionCount} ${language === 'id' ? 'Sesi' : 'Plans'}` : 'Plan'}
                       </div>
                     </div>
                   ) : (
