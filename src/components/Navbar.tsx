@@ -166,18 +166,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* User Auth Section */}
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200 dark:border-slate-800">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName || 'Runner'}
-                    className="w-8 h-8 rounded-full border border-cyan-500/40 object-cover"
-                    referrerPolicy="no-referrer"
+                <div 
+                  className="relative group cursor-pointer" 
+                  onClick={onOpenSettings} 
+                  title={language === 'id' ? 'Sesi login aktif (1 minggu) - Klik untuk info' : 'Login session active (1 week) - Click for info'}
+                >
+                  {user.photoURL ? (
+                    <img
+                      src={user.photoURL}
+                      alt={user.displayName || 'Runner'}
+                      className="w-8 h-8 rounded-full border border-cyan-500/40 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold flex items-center justify-center border border-cyan-500/30">
+                      {(userProfile?.settings.runner_name || user.displayName || 'R').charAt(0)}
+                    </div>
+                  )}
+                  {/* Subtle 7-day session indicator dot */}
+                  <span 
+                    className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-900" 
+                    title={language === 'id' ? 'Sesi login aktif 1 minggu' : '1-week session active'} 
                   />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold flex items-center justify-center border border-cyan-500/30">
-                    {(userProfile?.settings.runner_name || user.displayName || 'R').charAt(0)}
-                  </div>
-                )}
+                </div>
                 <button
                   id="sign-out-btn"
                   onClick={signOut}

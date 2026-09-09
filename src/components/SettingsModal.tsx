@@ -12,7 +12,10 @@ import {
   Check,
   Globe,
   Trash2,
-  Database
+  Database,
+  Clock,
+  ShieldCheck,
+  RotateCcw
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 import { Language } from '../types';
@@ -36,7 +39,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearAllData,
   onSeedDemoData
 }) => {
-  const { user, userProfile, updateUserSettings, theme, setTheme, language, setLanguage, t } = useAuth();
+  const { 
+    user, 
+    userProfile, 
+    updateUserSettings, 
+    theme, 
+    setTheme, 
+    language, 
+    setLanguage, 
+    t,
+    sessionExpiresAt,
+    extendSession
+  } = useAuth();
+  const [sessionExtendedMsg, setSessionExtendedMsg] = useState<boolean>(false);
 
   const [quote, setQuote] = useState<string>(
     userProfile?.settings.motivation_quote || 
@@ -380,6 +395,71 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Login Session Management (1 Week Session) */}
+          {user && (
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="p-3 rounded-2xl bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-500/20">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start space-x-2.5">
+                    <div className="w-7 h-7 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          {t('login_session')}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/15 text-cyan-600 dark:text-cyan-400">
+                          {Math.max(1, Math.ceil(((sessionExpiresAt || Date.now() + 7 * 24 * 3600 * 1000) - Date.now()) / (1000 * 60 * 60 * 24)))} {language === 'id' ? 'hari lagi' : 'days left'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {t('login_session_desc')}
+                      </p>
+                      {sessionExpiresAt && (
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 flex items-center space-x-1">
+                          <Clock className="w-3 h-3 text-cyan-500" />
+                          <span>
+                            {t('session_active_until')}: {new Date(sessionExpiresAt).toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', {
+                              weekday: 'short',
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    id="extend-session-btn"
+                    onClick={() => {
+                      extendSession();
+                      setSessionExtendedMsg(true);
+                      setTimeout(() => setSessionExtendedMsg(false), 3000);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl border border-cyan-500/30 bg-white dark:bg-slate-900 hover:bg-cyan-500 hover:text-slate-950 text-cyan-600 dark:text-cyan-400 text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer shrink-0 shadow-xs"
+                    title={t('extend_session')}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span className="hidden sm:inline">{t('extend_session')}</span>
+                  </button>
+                </div>
+
+                {sessionExtendedMsg && (
+                  <div className="mt-2.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex items-center space-x-1.5 animate-in fade-in duration-200">
+                    <Check className="w-3.5 h-3.5 shrink-0" />
+                    <span>{t('session_extended')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Replay Splash Greeting */}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">

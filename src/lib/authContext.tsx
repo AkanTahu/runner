@@ -5,12 +5,17 @@ import {
   signInWithPopup, 
   signOut as fbSignOut, 
   signInAnonymously,
-  updateProfile
+  updateProfile,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider, handleFirestoreError, OperationType, testConnection } from './firebase';
 import { UserProfile, UserSettings, ThemeMode, Language } from '../types';
 import { getTranslation, TranslationKey } from './translations';
+
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+const SESSION_EXPIRY_KEY = 'running_tracker_session_expires_at_v1';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +30,8 @@ interface AuthContextType {
   signInAsDemoUser: () => Promise<void>;
   signOut: () => Promise<void>;
   updateUserSettings: (newSettings: Partial<UserSettings>) => Promise<void>;
+  sessionExpiresAt: number | null;
+  extendSession: () => void;
 }
 
 const defaultSettings: UserSettings = {
@@ -41,6 +48,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(() => {
+    const saved = localStorage.getItem(SESSION_EXPIRY_KEY);
+    return saved ? parseInt(saved, 10) : null;
+  });
+
+  const extendSession = () => {
+    const newExpiry = Date.now() + ONE_WEEK_MS;
+    localStorage.setItem(SESSION_EXPIRY_KEY, String(newExpiry));
+    setSessionExpiresAt(newExpiry);
+  };
+
   const [language, setLanguageState] = useState<Language>(() => {
     const isEnDefaultEnsured = localStorage.getItem('running_tracker_lang_v2_default_en');
     if (!isEnDefaultEnsured) {
@@ -114,8 +132,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
+        // Validate 1-week login session duration
+        const savedExpiryStr = localStorage.getItem(SESSION_EXPIRY_KEY);
+        const savedExpiry = savedExpiryStr ? parseInt(savedExpiryStr, 10) : null;
+
+        if (savedExpiry && Date.now() > savedExpiry) {
+          // The 1-week session has expired
+          console.info('1-week login session has expired. Cleanly signing out.');
+          localStorage.removeItem(SESSION_EXPIRY_KEY);
+          setSessionExpiresAt(null);
+          await fbSignOut(auth);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+
+        // Active session: maintain or set 1-week expiry (7 days)
+        const newExpiry = savedExpiry && savedExpiry > Date.now() ? savedExpiry : Date.now() + ONE_WEEK_MS;
+        localStorage.setItem(SESSION_EXPIRY_KEY, String(newExpiry));
+        setSessionExpiresAt(newExpiry);
+        setUser(currentUser);
+
         try {
           const userDocRef = doc(db, 'users', currentUser.uid);
           const docSnap = await getDoc(userDocRef);
@@ -153,6 +191,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         }
       } else {
+        localStorage.removeItem(SESSION_EXPIRY_KEY);
+        setSessionExpiresAt(null);
+        setUser(null);
         // In guest mode: load local guest settings
         try {
           const savedGuest = localStorage.getItem('running_tracker_guest_settings');
@@ -183,7 +224,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await setPersistence(auth, browserLocalPersistence);
+      const res = await signInWithPopup(auth, googleProvider);
+      const newExpiry = Date.now() + ONE_WEEK_MS;
+      localStorage.setItem(SESSION_EXPIRY_KEY, String(newExpiry));
+      setSessionExpiresAt(newExpiry);
+      setUser(res.user);
     } catch (error) {
       console.error('Sign in with Google error:', error);
       throw error;
@@ -218,6 +264,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      localStorage.removeItem(SESSION_EXPIRY_KEY);
+      setSessionExpiresAt(null);
       await fbSignOut(auth);
       setUser(null);
       const savedGuest = localStorage.getItem('running_tracker_guest_settings');
@@ -289,7 +337,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithGoogle,
       signInAsDemoUser,
       signOut,
-      updateUserSettings
+      updateUserSettings,
+      sessionExpiresAt,
+      extendSession
     }}>
       {children}
     </AuthContext.Provider>
