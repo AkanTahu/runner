@@ -15,6 +15,7 @@ import { Plan, ActualLog, RunType, Gear } from '../types';
 import { createPlan, updatePlan } from '../lib/planService';
 import { useAuth } from '../lib/authContext';
 import { PacePicker, DurationPicker } from './PaceDurationPicker';
+import { getTodayLocalDate } from '../lib/dateUtils';
 
 interface RunModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const RunModal: React.FC<RunModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Common fields
-  const [date, setDate] = useState<string>(defaultDate || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(defaultDate || getTodayLocalDate());
   const [time, setTime] = useState<string>(defaultTime || '06:00');
   const [sessionLabel, setSessionLabel] = useState<string>(defaultSessionLabel || '');
   const [typeRun, setTypeRun] = useState<RunType>('Easy');
@@ -116,7 +117,7 @@ export const RunModal: React.FC<RunModalProps> = ({
       }
     } else {
       // Reset form
-      setDate(defaultDate || new Date().toISOString().split('T')[0]);
+      setDate(defaultDate || getTodayLocalDate());
       setTime(defaultTime || '06:00');
       setSessionLabel(defaultSessionLabel || '');
       setTypeRun('Easy');

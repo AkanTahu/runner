@@ -14,6 +14,13 @@ import {
 } from 'lucide-react';
 import { Plan, Gear, UserSettings } from '../types';
 import { useAuth } from '../lib/authContext';
+import { 
+  formatLocalDate, 
+  getTodayLocalDate, 
+  getMondayOfWeek, 
+  getDayName, 
+  parseLocalDate 
+} from '../lib/dateUtils';
 
 interface DashboardProps {
   plans: Plan[];
@@ -47,25 +54,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
     plans: Plan[];
   } | null>(null);
 
-  // Calculate current week range (Monday to Sunday)
+  // Calculate current week range (Monday to Sunday) in user's local timezone
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 is Sunday, 1 is Monday
-  const diffToMonday = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek;
-  const currentMonday = new Date(now);
-  currentMonday.setDate(now.getDate() + diffToMonday);
-  currentMonday.setHours(0, 0, 0, 0);
-
-  const currentSunday = new Date(currentMonday);
-  currentSunday.setDate(currentMonday.getDate() + 6);
-  currentSunday.setHours(23, 59, 59, 999);
-
-  const todayStr = now.toISOString().split('T')[0];
+  const currentMonday = getMondayOfWeek(now);
+  const currentSunday = new Date(currentMonday.getFullYear(), currentMonday.getMonth(), currentMonday.getDate() + 6, 23, 59, 59, 999);
+  const todayStr = getTodayLocalDate();
 
   // Calculate stats for current week (Donut chart)
   let totalDistanceCompleted = 0;
 
   plans.forEach((p) => {
-    const pDate = new Date(p.date);
+    const pDate = parseLocalDate(p.date);
     const isThisWeek = pDate >= currentMonday && pDate <= currentSunday;
 
     if (p.actual_log?.is_run && isThisWeek) {
@@ -87,18 +86,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const todayTotalTargetDist = todayPlans.reduce((sum, p) => sum + (p.type_run !== 'Rest Day' ? p.target_distance : 0), 0);
 
   // 7-day schedule range (responsive to weekOffset)
-  const scheduleMonday = new Date(currentMonday);
-  scheduleMonday.setDate(currentMonday.getDate() + (weekOffset * 7));
+  const scheduleMonday = new Date(currentMonday.getFullYear(), currentMonday.getMonth(), currentMonday.getDate() + (weekOffset * 7));
 
-  // Weekdays representation for 7-day schedule
-  const dayNamesEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const dayNamesId = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-  const activeDayNames = language === 'id' ? dayNamesId : dayNamesEn;
-
-  const weekDays = activeDayNames.map((dayName, index) => {
-    const dayDate = new Date(scheduleMonday);
-    dayDate.setDate(scheduleMonday.getDate() + index);
-    const dateFormatted = dayDate.toISOString().split('T')[0];
+  // 7-day schedule: Monday (offset 0) to Sunday (offset 6)
+  const weekDays = [0, 1, 2, 3, 4, 5, 6].map((offset) => {
+    const dayDate = new Date(scheduleMonday.getFullYear(), scheduleMonday.getMonth(), scheduleMonday.getDate() + offset);
+    const dateFormatted = formatLocalDate(dayDate);
+    const dayName = getDayName(dayDate, language === 'id' ? 'id' : 'en');
     const dayPlans = plans
       .filter(p => p.date === dateFormatted)
       .sort((a, b) => (a.time || '00:00').localeCompare(b.time || '00:00'));

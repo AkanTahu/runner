@@ -1,4 +1,5 @@
 import { Gear, Plan } from '../types';
+import { formatLocalDate } from './dateUtils';
 
 const LOCAL_GEARS_KEY = 'stride_running_tracker_local_gears';
 const LOCAL_PLANS_KEY = 'stride_running_tracker_local_plans';
@@ -67,9 +68,8 @@ export const DEFAULT_LOCAL_GEARS: Gear[] = [
 export function getDefaultLocalPlans(uid: string, shoeId1: string = 'gear-default-1', shoeId2: string = 'gear-default-2'): Plan[] {
   const today = new Date();
   const getOffsetDate = (offsetDays: number) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + offsetDays);
-    return d.toISOString().split('T')[0];
+    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + offsetDays);
+    return formatLocalDate(d);
   };
 
   return [

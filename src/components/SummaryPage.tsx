@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Plan, Gear } from '../types';
 import { useAuth } from '../lib/authContext';
+import { getTodayLocalDate } from '../lib/dateUtils';
 
 interface SummaryPageProps {
   plans: Plan[];
@@ -468,7 +469,7 @@ export const SummaryPage: React.FC<SummaryPageProps> = ({ plans, gears }) => {
             const isCompleted = completedPlans.length > 0;
             const isRest = dayPlans.length > 0 && dayPlans.every(p => p.type_run === 'Rest Day');
             const hasPlanPending = dayPlans.length > 0 && !isCompleted && !isRest;
-            const isCellToday = cell.dateStr === today.toISOString().split('T')[0];
+            const isCellToday = cell.dateStr === getTodayLocalDate();
             const sessionCount = dayPlans.length;
 
             const totalActualDist = completedPlans.reduce((sum, p) => sum + (p.actual_log?.actual_distance || 0), 0);
