@@ -7,16 +7,35 @@ import {
   Moon, 
   Settings as SettingsIcon, 
   LogOut, 
-  LogIn,
-  PackageCheck,
-  Globe
+  PackageCheck
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
+
+const GoogleIcon: React.FC<{ className?: string }> = ({ className = "w-4 h-4" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      fill="#4285F4"
+      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+    />
+  </svg>
+);
 
 interface NavbarProps {
   activeTab: 'dashboard' | 'plans' | 'summary' | 'gears';
   setActiveTab: (tab: 'dashboard' | 'plans' | 'summary' | 'gears') => void;
-  onOpenRunModal: () => void;
+  onOpenRunModal?: () => void;
   onOpenSettings: () => void;
   onReopenSplash: () => void;
 }
@@ -24,18 +43,14 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  onOpenRunModal,
+  onOpenRunModal: _onOpenRunModal,
   onOpenSettings,
   onReopenSplash: _onReopenSplash
 }) => {
-  const { user, userProfile, theme, setTheme, language, setLanguage, t, signInWithGoogle, signInAsDemoUser, signOut } = useAuth();
+  const { user, userProfile, theme, setTheme, language, t, signInWithGoogle, signInAsDemoUser, signOut } = useAuth();
 
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
-  const toggleLanguage = () => {
-    setLanguage(language === 'en' ? 'id' : 'en');
   };
 
   return (
@@ -43,28 +58,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Brand Identity */}
-          <div className="flex items-center space-x-3">
-            <button 
-              id="brand-logo-btn"
-              onClick={() => setActiveTab('dashboard')} 
-              className="flex items-center space-x-2.5 focus:outline-none group cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-xl bg-cyan-500 flex items-center justify-center text-slate-950 font-black shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-                <Footprints className="w-5 h-5 stroke-[2.5]" />
-              </div>
-              <div className="text-left hidden xs:block">
-                <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white uppercase leading-none">
-                  RUN TRACKER<span className="text-cyan-500 dark:text-cyan-400">.</span>
-                </div>
-                <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
-                  Planner & Mileage Log
-                </div>
-              </div>
-            </button>
-
+          {/* Navigation Links */}
+          <div className="flex items-center">
             {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center space-x-1.5 ml-6">
+            <nav className="hidden md:flex items-center space-x-1.5">
               <button
                 id="nav-tab-dashboard"
                 onClick={() => setActiveTab('dashboard')}
@@ -117,26 +114,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Tools */}
           <div className="flex items-center space-x-1.5 sm:space-x-2.5">
-            {/* Quick Language Toggle */}
-            <button
-              id="lang-quick-toggle-btn"
-              onClick={toggleLanguage}
-              title={`Switch language: current is ${language === 'en' ? 'English' : 'Bahasa Indonesia'}`}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
-            >
-              <Globe className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
-              <span className="uppercase text-[11px]">{language}</span>
-            </button>
-
-            {/* Primary Log Run CTA Button */}
-            <button
-              id="top-log-run-btn"
-              onClick={() => onOpenRunModal()}
-              className="flex items-center justify-center px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 shadow-md shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-            >
-              <span>{t('quick_log')}</span>
-            </button>
-
             {/* Theme Toggle Button */}
             <button
               id="theme-toggle-btn"
@@ -203,11 +180,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   id="google-signin-btn"
                   onClick={signInWithGoogle}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-950 hover:opacity-90 transition-opacity flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                  title={t('sign_in_google')}
+                  aria-label={t('sign_in_google')}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center shadow-xs cursor-pointer hover:scale-105 active:scale-95"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">{t('sign_in_google')}</span>
-                  <span className="sm:hidden">Google</span>
+                  <GoogleIcon className="w-4 h-4" />
                 </button>
                 <button
                   id="demo-signin-btn"

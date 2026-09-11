@@ -225,21 +225,7 @@ const MainApp: React.FC = () => {
         )}
       </main>
 
-      {/* 4. Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800/80 py-6 bg-white/50 dark:bg-slate-950/80 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="font-bold text-slate-800 dark:text-slate-200 tracking-tight">STRIDE // PERSONAL RUNNER</span>
-            <span className="text-slate-600">•</span>
-            <span className="font-mono text-[11px] text-cyan-500/80">Sleek Interface v1.3</span>
-          </div>
-          <div className="text-slate-500">
-            React 19 • Vite • Tailwind • Firebase Firestore
-          </div>
-        </div>
-      </footer>
-
-      {/* 5. Modals */}
+      {/* Modals */}
       <RunModal
         isOpen={isRunModalOpen}
         onClose={() => {
