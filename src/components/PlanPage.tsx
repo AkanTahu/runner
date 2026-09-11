@@ -516,7 +516,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
         <div className="flex items-center space-x-3">
           <button
             id="plan-page-create-plan-btn"
-            onClick={onOpenCreatePlan}
+            onClick={() => onOpenCreatePlan()}
             className="flex items-center space-x-2 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-xs cursor-pointer"
           >
             <CalendarIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
@@ -525,7 +525,7 @@ export const PlanPage: React.FC<PlanPageProps> = ({
 
           <button
             id="plan-page-quick-log-btn"
-            onClick={onOpenQuickRunModal}
+            onClick={() => onOpenQuickRunModal()}
             className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20 transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />

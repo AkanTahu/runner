@@ -32,6 +32,8 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
   const [maxDistance, setMaxDistance] = useState<string>('750');
   const [isActive, setIsActive] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [gearError, setGearError] = useState<string | null>(null);
 
   const filteredGears = gears.filter(g => {
     if (activeCategory === 'all') return true;
@@ -46,6 +48,7 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
     setInitialDistance('0');
     setMaxDistance('750');
     setIsActive(true);
+    setGearError(null);
     setIsModalOpen(true);
   };
 
@@ -57,21 +60,24 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
     setInitialDistance(gear.total_distance.toString());
     setMaxDistance((gear.max_distance || 750).toString());
     setIsActive(gear.is_active);
+    setGearError(null);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (gear: Gear) => {
     if (!gear.id) return;
-    const confirmMsg = language === 'id' 
-      ? `Hapus ${gear.name} dari daftar perlengkapan?` 
-      : `Delete ${gear.name} from gear list?`;
-    if (!window.confirm(confirmMsg)) return;
+    if (deleteConfirmId !== gear.id) {
+      setDeleteConfirmId(gear.id);
+      return;
+    }
 
     try {
       await deleteGear(gear.id);
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error('Delete gear error:', err);
-      alert('Failed to delete gear.');
+      setGearError(language === 'id' ? 'Gagal menghapus perlengkapan.' : 'Failed to delete gear.');
+      setTimeout(() => setGearError(null), 3000);
     }
   };
 
@@ -101,7 +107,7 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
       setIsModalOpen(false);
     } catch (err) {
       console.error('Save gear error:', err);
-      alert('Failed to save gear.');
+      setGearError(language === 'id' ? 'Gagal menyimpan perlengkapan.' : 'Failed to save gear.');
     } finally {
       setSubmitting(false);
     }
@@ -206,13 +212,30 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(gear)}
-                      title={t('delete')}
-                      className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {deleteConfirmId === gear.id ? (
+                      <div className="flex items-center space-x-1 animate-in fade-in zoom-in-95 duration-150">
+                        <button
+                          onClick={() => handleDelete(gear)}
+                          className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          {language === 'id' ? 'Hapus?' : 'Confirm?'}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirmId(null)}
+                          className="p-1 text-slate-400 hover:text-slate-200 rounded-lg text-[10px]"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(gear)}
+                        title={t('delete')}
+                        className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -287,9 +310,6 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
         <div 
           id="gear-modal-overlay"
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
         >
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 overflow-hidden">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -299,12 +319,18 @@ export const GearPage: React.FC<GearPageProps> = ({ gears, uid }) => {
               <button 
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title={language === 'id' ? 'Tutup (X)' : 'Close (X)'}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              {gearError && (
+                <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-600 dark:text-rose-400">
+                  {gearError}
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t('gear_category')}

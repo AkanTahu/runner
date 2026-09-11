@@ -47,10 +47,14 @@ export const RunModal: React.FC<RunModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const cleanDate = typeof defaultDate === 'string' && defaultDate ? defaultDate : getTodayLocalDate();
+  const cleanTime = typeof defaultTime === 'string' && defaultTime ? defaultTime : '06:00';
+  const cleanSessionLabel = typeof defaultSessionLabel === 'string' && defaultSessionLabel ? defaultSessionLabel : '';
+
   // Common fields
-  const [date, setDate] = useState<string>(defaultDate || getTodayLocalDate());
-  const [time, setTime] = useState<string>(defaultTime || '06:00');
-  const [sessionLabel, setSessionLabel] = useState<string>(defaultSessionLabel || '');
+  const [date, setDate] = useState<string>(cleanDate);
+  const [time, setTime] = useState<string>(cleanTime);
+  const [sessionLabel, setSessionLabel] = useState<string>(cleanSessionLabel);
   const [typeRun, setTypeRun] = useState<RunType>('Easy');
   const [location, setLocation] = useState<string>('Gelora Bung Karno');
   const [notes, setNotes] = useState<string>('');
@@ -117,9 +121,9 @@ export const RunModal: React.FC<RunModalProps> = ({
       }
     } else {
       // Reset form
-      setDate(defaultDate || getTodayLocalDate());
-      setTime(defaultTime || '06:00');
-      setSessionLabel(defaultSessionLabel || '');
+      setDate(cleanDate);
+      setTime(cleanTime);
+      setSessionLabel(cleanSessionLabel);
       setTypeRun('Easy');
       setLocation('Gelora Bung Karno Outer Ring');
       setTargetDistance('5.0');
@@ -301,9 +305,6 @@ export const RunModal: React.FC<RunModalProps> = ({
     <div 
       id="run-modal-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div 
         id="run-modal-container"
@@ -330,6 +331,8 @@ export const RunModal: React.FC<RunModalProps> = ({
             id="close-modal-btn"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title={language === 'id' ? 'Tutup (X)' : 'Close (X)'}
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>

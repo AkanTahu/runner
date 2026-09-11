@@ -131,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Primary Log Run CTA Button */}
             <button
               id="top-log-run-btn"
-              onClick={onOpenRunModal}
+              onClick={() => onOpenRunModal()}
               className="flex items-center justify-center px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-500 hover:bg-cyan-400 shadow-md shadow-cyan-500/25 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <span>{t('quick_log')}</span>

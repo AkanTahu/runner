@@ -70,15 +70,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [dataActionLoading, setDataActionLoading] = useState<boolean>(false);
   const [dataActionMsg, setDataActionMsg] = useState<string | null>(null);
+  const [confirmingClear, setConfirmingClear] = useState<boolean>(false);
+  const [confirmingDemo, setConfirmingDemo] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
   const handleClearData = async () => {
-    const confirmText = language === 'id'
-      ? 'Hapus SEMUA data lari dan perlengkapan Anda? Data yang dihapus tidak dapat dikembalikan.'
-      : 'Delete ALL your runs and gear logs? This will clear all items from your account.';
-    if (!window.confirm(confirmText)) return;
-
+    if (!confirmingClear) {
+      setConfirmingClear(true);
+      return;
+    }
+    setConfirmingClear(false);
     setDataActionLoading(true);
     try {
       if (onClearAllData) {
@@ -88,18 +90,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTimeout(() => setDataActionMsg(null), 3000);
     } catch (err) {
       console.error('Failed to clear data:', err);
-      alert(language === 'id' ? 'Gagal mengosongkan data.' : 'Failed to clear data.');
+      setDataActionMsg(language === 'id' ? 'Gagal mengosongkan data.' : 'Failed to clear data.');
+      setTimeout(() => setDataActionMsg(null), 3000);
     } finally {
       setDataActionLoading(false);
     }
   };
 
   const handleSeedDemo = async () => {
-    const confirmText = language === 'id'
-      ? 'Muat data demo lari dan sepatu contoh ke akun Anda?'
-      : 'Load starter demo running workouts and shoes to your account?';
-    if (!window.confirm(confirmText)) return;
-
+    if (!confirmingDemo) {
+      setConfirmingDemo(true);
+      return;
+    }
+    setConfirmingDemo(false);
     setDataActionLoading(true);
     try {
       if (onSeedDemoData) {
@@ -109,7 +112,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTimeout(() => setDataActionMsg(null), 3000);
     } catch (err) {
       console.error('Failed to seed demo data:', err);
-      alert(language === 'id' ? 'Gagal memuat data demo.' : 'Failed to load demo data.');
+      setDataActionMsg(language === 'id' ? 'Gagal memuat data demo.' : 'Failed to load demo data.');
+      setTimeout(() => setDataActionMsg(null), 3000);
     } finally {
       setDataActionLoading(false);
     }
@@ -148,9 +152,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div 
       id="settings-modal-overlay"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 overflow-hidden animate-in fade-in zoom-in-95 duration-200 text-slate-900 dark:text-slate-100">
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
@@ -168,8 +169,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            title={language === 'id' ? 'Tutup (X)' : 'Close (X)'}
           >
             <X className="w-4 h-4" />
           </button>
@@ -363,16 +366,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 id="clear-all-data-btn"
                 disabled={dataActionLoading || (plansCount === 0 && gearsCount === 0)}
                 onClick={handleClearData}
-                className="p-2.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-900/30 text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className={`p-2.5 rounded-xl border text-left transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+                  confirmingClear 
+                    ? 'border-red-500 bg-red-500 text-white shadow-md' 
+                    : 'border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100/50 dark:hover:bg-red-900/30'
+                }`}
               >
                 <div className="flex items-center space-x-2">
                   <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span className="text-xs font-bold">
-                    {language === 'id' ? 'Kosongkan Data' : 'Clear All Data'}
+                    {confirmingClear 
+                      ? (language === 'id' ? 'Yakin Hapus Semua?' : 'Confirm Clear?') 
+                      : (language === 'id' ? 'Kosongkan Data' : 'Clear All Data')}
                   </span>
                 </div>
-                <p className="text-[10px] text-red-500/80 dark:text-red-400/70 mt-0.5">
-                  {language === 'id' ? 'Hapus semua lari & gear' : 'Delete all runs & gear'}
+                <p className={`text-[10px] mt-0.5 ${confirmingClear ? 'text-red-100' : 'text-red-500/80 dark:text-red-400/70'}`}>
+                  {confirmingClear 
+                    ? (language === 'id' ? 'Klik sekali lagi untuk konfirmasi' : 'Click again to confirm') 
+                    : (language === 'id' ? 'Hapus semua lari & gear' : 'Delete all runs & gear')}
                 </p>
               </button>
 
@@ -381,16 +392,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 id="load-demo-data-btn"
                 disabled={dataActionLoading}
                 onClick={handleSeedDemo}
-                className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-all disabled:opacity-40 cursor-pointer"
+                className={`p-2.5 rounded-xl border text-left transition-all disabled:opacity-40 cursor-pointer ${
+                  confirmingDemo
+                    ? 'border-cyan-500 bg-cyan-500 text-slate-950 shadow-md'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
               >
                 <div className="flex items-center space-x-2">
-                  <Database className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                  <Database className={`w-3.5 h-3.5 shrink-0 ${confirmingDemo ? 'text-slate-950' : 'text-cyan-500'}`} />
                   <span className="text-xs font-bold">
-                    {language === 'id' ? 'Muat Data Demo' : 'Load Demo Data'}
+                    {confirmingDemo
+                      ? (language === 'id' ? 'Yakin Muat Demo?' : 'Confirm Load Demo?')
+                      : (language === 'id' ? 'Muat Data Demo' : 'Load Demo Data')}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  {language === 'id' ? 'Tambahkan contoh data' : 'Add sample starter data'}
+                <p className={`text-[10px] mt-0.5 ${confirmingDemo ? 'text-slate-900 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {confirmingDemo
+                    ? (language === 'id' ? 'Klik sekali lagi untuk konfirmasi' : 'Click again to confirm')
+                    : (language === 'id' ? 'Tambahkan contoh data' : 'Add sample starter data')}
                 </p>
               </button>
             </div>

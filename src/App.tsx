@@ -81,18 +81,18 @@ const MainApp: React.FC = () => {
     setShowSplash(false);
   };
 
-  const handleOpenQuickLog = (defaultDate?: string, defaultSessionLabel?: string) => {
+  const handleOpenQuickLog = (defaultDate?: unknown, defaultSessionLabel?: unknown) => {
     setSelectedPlanForModal(null);
-    setModalDefaultDate(defaultDate);
-    setModalDefaultSessionLabel(defaultSessionLabel);
+    setModalDefaultDate(typeof defaultDate === 'string' ? defaultDate : undefined);
+    setModalDefaultSessionLabel(typeof defaultSessionLabel === 'string' ? defaultSessionLabel : undefined);
     setRunModalMode('quick_log');
     setIsRunModalOpen(true);
   };
 
-  const handleOpenCreatePlan = (defaultDate?: string, defaultSessionLabel?: string) => {
+  const handleOpenCreatePlan = (defaultDate?: unknown, defaultSessionLabel?: unknown) => {
     setSelectedPlanForModal(null);
-    setModalDefaultDate(defaultDate);
-    setModalDefaultSessionLabel(defaultSessionLabel);
+    setModalDefaultDate(typeof defaultDate === 'string' ? defaultDate : undefined);
+    setModalDefaultSessionLabel(typeof defaultSessionLabel === 'string' ? defaultSessionLabel : undefined);
     setRunModalMode('plan');
     setIsRunModalOpen(true);
   };
