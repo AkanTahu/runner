@@ -15,6 +15,7 @@ import { Plan, ActualLog, RunType } from '../types';
 import { updateShoeMileage } from './gearService';
 import { getLocalPlans, saveLocalPlans, getDefaultLocalPlans } from './localData';
 import { removeUndefinedFields } from './cleanData';
+import { ParsedGarminActivity } from './garminParser';
 
 const PLANS_COLLECTION = 'plans';
 
@@ -248,3 +249,158 @@ export async function clearAllPlans(uid: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+/**
+ * Batch import activities from Garmin Forerunner 165 / Garmin Connect
+ * Checks duplicates based on date + time, stores actual_logs, and updates shoe mileage.
+ */
+export async function batchImportGarminRuns(
+  uid: string, 
+  activities: ParsedGarminActivity[], 
+  defaultShoeId?: string
+): Promise<{ importedCount: number; skippedCount: number }> {
+  if (activities.length === 0) return { importedCount: 0, skippedCount: 0 };
+
+  const effectiveUid = uid || 'guest_runner';
+  let totalMileageToAdd = 0;
+  let importedCount = 0;
+  let skippedCount = 0;
+
+  // Local / Guest mode handling
+  if (!auth.currentUser || !uid || uid.startsWith('guest_')) {
+    const current = getLocalPlans(effectiveUid);
+    const existingDateTimes = new Set(current.map(p => `${p.date}_${p.time || ''}`));
+
+    const newPlans: Plan[] = [];
+
+    for (const act of activities) {
+      const key = `${act.date}_${act.time}`;
+      if (existingDateTimes.has(key)) {
+        skippedCount++;
+        continue;
+      }
+      existingDateTimes.add(key);
+
+      const planId = `garmin_plan_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+      const plan: Plan = {
+        id: planId,
+        plan_id: planId,
+        uid: effectiveUid,
+        date: act.date,
+        time: act.time,
+        session_label: act.title || 'Garmin Forerunner 165 Run',
+        type_run: act.typeRun,
+        target_distance: act.distance,
+        target_avg_pace: act.pace,
+        target_location: 'GPS Outdoor (Garmin 165)',
+        description: `Import Garmin Forerunner 165 • HR: ${act.heartRate || '-'} bpm • Cal: ${act.calories || '-'} kcal`,
+        actual_log: {
+          is_run: true,
+          actual_type_run: act.typeRun,
+          actual_distance: act.distance,
+          actual_duration: act.duration,
+          actual_avg_pace: act.pace,
+          avg_heart_rate: act.heartRate,
+          shoe_id: defaultShoeId,
+          actual_location: 'Garmin GPS Tracked',
+          actual_description: `Garmin Forerunner 165 • Elevate Optical HR • Cadence: ${act.cadence || '-'} spm • Elev Gain: ${act.elevationGain || '-'} m`,
+          logged_at: `${act.date}T${act.time}:00.000Z`
+        },
+        createdAt: new Date().toISOString()
+      };
+
+      newPlans.push(plan);
+      importedCount++;
+      totalMileageToAdd += act.distance;
+    }
+
+    if (newPlans.length > 0) {
+      saveLocalPlans([...current, ...newPlans]);
+      if (defaultShoeId && totalMileageToAdd > 0) {
+        await updateShoeMileage(undefined, 0, defaultShoeId, totalMileageToAdd);
+      }
+    }
+
+    return { importedCount, skippedCount };
+  }
+
+  // Firestore mode
+  const path = PLANS_COLLECTION;
+  try {
+    // Fetch existing plans to avoid duplicate entries for the same date & time
+    const q = query(collection(db, path), where('uid', '==', uid));
+    const snapshot = await getDocs(q);
+    const existingDateTimes = new Set<string>();
+    snapshot.forEach(docSnap => {
+      const d = docSnap.data() as Plan;
+      if (d.date) {
+        existingDateTimes.add(`${d.date}_${d.time || ''}`);
+      }
+    });
+
+    const newActivitiesToImport: ParsedGarminActivity[] = [];
+    for (const act of activities) {
+      const key = `${act.date}_${act.time}`;
+      if (existingDateTimes.has(key)) {
+        skippedCount++;
+      } else {
+        existingDateTimes.add(key);
+        newActivitiesToImport.push(act);
+      }
+    }
+
+    if (newActivitiesToImport.length === 0) {
+      return { importedCount: 0, skippedCount };
+    }
+
+    // Process in batches of 400 (Firestore batch limit is 500)
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < newActivitiesToImport.length; i += BATCH_SIZE) {
+      const chunk = newActivitiesToImport.slice(i, i + BATCH_SIZE);
+      const batch = writeBatch(db);
+
+      for (const act of chunk) {
+        const docRef = doc(collection(db, path));
+        const dataToSave = removeUndefinedFields({
+          uid,
+          date: act.date,
+          time: act.time,
+          session_label: act.title || 'Garmin Forerunner 165 Run',
+          type_run: act.typeRun,
+          target_distance: act.distance,
+          target_avg_pace: act.pace,
+          target_location: 'GPS Outdoor (Garmin 165)',
+          description: `Import Garmin Forerunner 165 • HR: ${act.heartRate || '-'} bpm • Cal: ${act.calories || '-'} kcal`,
+          actual_log: {
+            is_run: true,
+            actual_type_run: act.typeRun,
+            actual_distance: act.distance,
+            actual_duration: act.duration,
+            actual_avg_pace: act.pace,
+            avg_heart_rate: act.heartRate,
+            shoe_id: defaultShoeId,
+            actual_location: 'Garmin GPS Tracked',
+            actual_description: `Garmin Forerunner 165 • Elevate Optical HR • Cadence: ${act.cadence || '-'} spm • Elev Gain: ${act.elevationGain || '-'} m`,
+            logged_at: `${act.date}T${act.time}:00.000Z`
+          },
+          createdAt: new Date().toISOString()
+        });
+
+        batch.set(docRef, dataToSave);
+        importedCount++;
+        totalMileageToAdd += act.distance;
+      }
+
+      await batch.commit();
+    }
+
+    if (defaultShoeId && totalMileageToAdd > 0) {
+      await updateShoeMileage(undefined, 0, defaultShoeId, totalMileageToAdd);
+    }
+
+    return { importedCount, skippedCount };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+

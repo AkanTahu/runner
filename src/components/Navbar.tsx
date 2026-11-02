@@ -7,7 +7,8 @@ import {
   Moon, 
   Settings as SettingsIcon, 
   LogOut, 
-  PackageCheck
+  PackageCheck,
+  Watch
 } from 'lucide-react';
 import { useAuth } from '../lib/authContext';
 
@@ -36,6 +37,7 @@ interface NavbarProps {
   activeTab: 'dashboard' | 'plans' | 'summary' | 'gears';
   setActiveTab: (tab: 'dashboard' | 'plans' | 'summary' | 'gears') => void;
   onOpenRunModal?: () => void;
+  onOpenGarminSync: () => void;
   onOpenSettings: () => void;
   onReopenSplash: () => void;
 }
@@ -44,6 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenRunModal: _onOpenRunModal,
+  onOpenGarminSync,
   onOpenSettings,
   onReopenSplash: _onReopenSplash
 }) => {
@@ -114,6 +117,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Action Tools */}
           <div className="flex items-center space-x-1.5 sm:space-x-2.5">
+            {/* Garmin Forerunner 165 Integration Button */}
+            <button
+              id="garmin-sync-btn"
+              onClick={() => onOpenGarminSync()}
+              title={language === 'id' ? 'Integrasi Garmin Forerunner 165 (Auto-Sync & Import)' : 'Garmin Forerunner 165 Integration (Auto-Sync & Import)'}
+              className="flex items-center space-x-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 group"
+            >
+              <Watch className="w-3.5 h-3.5 text-cyan-500 group-hover:rotate-12 transition-transform" />
+              <span className="hidden sm:inline">Garmin Sync</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-cyan-500 text-slate-950 font-black">
+                FR 165
+              </span>
+            </button>
+
             {/* Theme Toggle Button */}
             <button
               id="theme-toggle-btn"

@@ -8,9 +8,11 @@ import { SummaryPage } from './components/SummaryPage';
 import { GearPage } from './components/GearPage';
 import { RunModal } from './components/RunModal';
 import { SettingsModal } from './components/SettingsModal';
+import { GarminSyncModal } from './components/GarminSyncModal';
 import { Plan, Gear } from './types';
-import { subscribePlans, clearAllPlans, seedDefaultPlansIfEmpty } from './lib/planService';
-import { subscribeGears, clearAllGears, seedDefaultGearsIfEmpty } from './lib/gearService';
+import { subscribePlans, clearAllPlans, seedDefaultPlansIfEmpty, batchImportGarminRuns } from './lib/planService';
+import { subscribeGears, clearAllGears, seedDefaultGearsIfEmpty, addGear } from './lib/gearService';
+import { ParsedGarminActivity } from './lib/garminParser';
 import { Loader2, Footprints } from 'lucide-react';
 
 const MainApp: React.FC = () => {
@@ -34,6 +36,7 @@ const MainApp: React.FC = () => {
   const [modalDefaultDate, setModalDefaultDate] = useState<string | undefined>(undefined);
   const [modalDefaultSessionLabel, setModalDefaultSessionLabel] = useState<string | undefined>(undefined);
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isGarminSyncOpen, setIsGarminSyncOpen] = useState<boolean>(false);
 
   const effectiveUid = user?.uid || 'guest_runner_personal';
 
@@ -113,6 +116,20 @@ const MainApp: React.FC = () => {
     setIsRunModalOpen(true);
   };
 
+  const handleBatchImportRuns = async (activities: ParsedGarminActivity[], defaultShoeId?: string) => {
+    return await batchImportGarminRuns(effectiveUid, activities, defaultShoeId);
+  };
+
+  const handleAddGarminGear = async () => {
+    await addGear(effectiveUid, {
+      category: 'Jam',
+      name: 'Garmin Forerunner 165',
+      image_url: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80',
+      total_distance: 0,
+      is_active: true
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans">
@@ -143,6 +160,7 @@ const MainApp: React.FC = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenRunModal={handleOpenQuickLog}
+        onOpenGarminSync={() => setIsGarminSyncOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onReopenSplash={() => setShowSplash(true)}
       />
@@ -256,6 +274,14 @@ const MainApp: React.FC = () => {
           await seedDefaultGearsIfEmpty(effectiveUid, 0);
           await seedDefaultPlansIfEmpty(effectiveUid, 0, gears);
         }}
+      />
+
+      <GarminSyncModal
+        isOpen={isGarminSyncOpen}
+        onClose={() => setIsGarminSyncOpen(false)}
+        gears={gears}
+        onImportRuns={handleBatchImportRuns}
+        onAddGarminGear={handleAddGarminGear}
       />
     </div>
   );
